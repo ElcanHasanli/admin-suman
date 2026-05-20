@@ -1,13 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-
-interface User {
-  id: number;
-  email: string;
-  name: string;
-  role: string;
-}
+import type { User } from '@/lib/types';
 
 interface AuthContextType {
   user: User | null;
@@ -22,15 +16,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // Load from localStorage
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      try {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
+    setHydrated(true);
   }, []);
 
   const login = (userData: User, authToken: string) => {
@@ -46,6 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
+
+  if (!hydrated) {
+    return null;
+  }
 
   return (
     <AuthContext.Provider
