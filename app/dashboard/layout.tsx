@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { DashboardShell } from '@/components/layout/DashboardShell';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, logout } = useAuth();
@@ -33,24 +33,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   };
 
-  return (
-    <DashboardShell onLogout={handleLogout}>
-      {children}
-    </DashboardShell>
-  );
-}
-
-function DashboardShell({
-  children,
-  onLogout,
-}: {
-  children: React.ReactNode;
-  onLogout: () => void;
-}) {
-  return (
-    <div className="min-h-screen bg-slate-100">
-      <Sidebar onLogout={onLogout} />
-      <main className="ml-[260px] min-h-screen p-8">{children}</main>
-    </div>
-  );
+  return <DashboardShell onLogout={handleLogout}>{children}</DashboardShell>;
 }

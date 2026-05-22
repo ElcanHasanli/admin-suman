@@ -25,11 +25,30 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+@media (max-width: 1023px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 input::placeholder,

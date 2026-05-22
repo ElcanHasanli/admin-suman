@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Users, Package, CheckCircle, TrendingUp } from 'lucide-react';
 import { getCustomers, getHistory, getOrders } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
-import { StatCard, Card } from '@/components/ui/Card';
+import { StatCard } from '@/components/ui/Card';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -40,15 +41,12 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div>
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">İdarə Paneli</h1>
-        <p className="mt-1 text-slate-500">SuMan admin panelinə xoş gəldiniz</p>
-      </div>
-
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader
+        title="İdarə Paneli"
+        description="SuMan admin panelinə xoş gəldiniz"
+      />
       <StatsGrid loading={loading} stats={stats} />
-
-     
     </div>
   );
 }
@@ -61,7 +59,7 @@ function StatsGrid({
   stats: { customers: number; orders: number; todayCompleted: number; revenue: number };
 }) {
   return (
-    <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <StatCard
         title="Müştərilər"
         value={loading ? '...' : stats.customers}

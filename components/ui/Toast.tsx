@@ -33,7 +33,7 @@ export function Toast({
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg ${styles[type]}`}
+      className={`fixed bottom-4 left-4 right-4 z-[100] flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg sm:left-auto sm:right-6 sm:max-w-md ${styles[type]}`}
     >
       {icons[type]}
       <span className="text-sm font-medium">{message}</span>

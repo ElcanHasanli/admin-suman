@@ -25,13 +25,17 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
 
   if (!open) return null;
 
-  const sizes = { md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+  const sizes = {
+    md: 'sm:max-w-lg',
+    lg: 'sm:max-w-2xl',
+    xl: 'sm:max-w-4xl',
+  };
 
   return (
     <Overlay onClose={onClose}>
       <Panel sizeClass={sizes[size]}>
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
+          <h2 className="pr-2 text-base font-semibold text-slate-900 sm:text-lg">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -40,7 +44,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
             <X size={20} />
           </button>
         </div>
-        <div className="overflow-y-auto px-6 py-5">{children}</div>
+        <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">{children}</div>
       </Panel>
     </Overlay>
   );
@@ -49,7 +53,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
 function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       {children}
@@ -60,7 +64,7 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
 function Panel({ children, sizeClass }: { children: React.ReactNode; sizeClass: string }) {
   return (
     <div
-      className={`w-full ${sizeClass} max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl`}
+      className={`w-full max-h-[92vh] overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl ${sizeClass}`}
       onClick={(e) => e.stopPropagation()}
     >
       {children}

@@ -125,7 +125,7 @@ function BgBlur() {
 
 function LoginCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/20 bg-white/95 p-8 shadow-2xl backdrop-blur">
+    <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/20 bg-white/95 p-5 shadow-2xl backdrop-blur sm:p-8">
       {children}
     </div>
   );
@@ -133,11 +133,11 @@ function LoginCard({ children }: { children: React.ReactNode }) {
 
 function LoginBrand() {
   return (
-    <div className="mb-8 text-center">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-100">
-        <Droplets className="text-sky-600" size={32} />
+    <div className="mb-6 text-center sm:mb-8">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 sm:h-16 sm:w-16">
+        <Droplets className="text-sky-600" size={28} />
       </div>
-      <h1 className="text-3xl font-bold text-slate-900">SuMan</h1>
+      <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">SuMan</h1>
       <p className="mt-1 text-slate-500">Su idarəetmə sistemi — Admin</p>
     </div>
   );

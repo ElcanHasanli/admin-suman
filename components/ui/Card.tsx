@@ -35,7 +35,7 @@ export function StatCard({
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-start justify-between p-5">
+      <div className="flex items-start justify-between gap-3 p-4 sm:p-5">
         <StatContent title={title} value={value} subtitle={subtitle} />
         <div
           className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${accents[accent]} text-white shadow-lg`}
@@ -59,7 +59,7 @@ function StatContent({
   return (
     <div>
       <p className="text-sm font-medium text-slate-500">{title}</p>
-      <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+      <p className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{value}</p>
       {subtitle && <p className="mt-1 text-xs text-slate-400">{subtitle}</p>}
     </div>
   );

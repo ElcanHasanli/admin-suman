@@ -79,11 +79,11 @@ function ConfirmModal({
           </div>
           <p className="text-sm leading-relaxed text-slate-600">{config.message}</p>
         </div>
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={onCancel}>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+          <Button type="button" variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
             {config.cancelLabel ?? 'Ləğv et'}
           </Button>
-          <Button type="button" variant={confirmVariant} onClick={onConfirm}>
+          <Button type="button" variant={confirmVariant} onClick={onConfirm} className="w-full sm:w-auto">
             {config.confirmLabel ?? 'Təsdiq et'}
           </Button>
         </div>

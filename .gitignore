@@ -153,6 +153,11 @@ dist
 /.next/
 /out/
 
+# Capacitor
+/ios/App/Pods/
+/ios/App/build/
+/ios/DerivedData/
+
 # production
 /build
 

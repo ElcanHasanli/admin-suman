@@ -8,8 +8,39 @@ import type {
   User,
 } from './types';
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'https://api.suman.khamsacraft.az/api';
+const PRODUCTION_API = 'https://api.suman.khamsacraft.az/api';
+
+function isLocalApiUrl(url: string): boolean {
+  return /localhost|127\.0\.0\.1/.test(url);
+}
+
+/** Mobil build-də .env.local localhost qalsa belə production API istifadə et */
+export function getApiBaseUrl(): string {
+  const env = process.env.NEXT_PUBLIC_API_URL || PRODUCTION_API;
+  if (typeof window === 'undefined') return env;
+  if (isLocalApiUrl(env) && window.location.protocol !== 'http:') {
+    return PRODUCTION_API;
+  }
+  return env;
+}
+
+function networkErrorMessage(): string {
+  return 'Serverə qoşulmaq mümkün olmadı. İnternet bağlantısını yoxlayın.';
+}
+
+function throwIfNetworkFailure(error: unknown): never {
+  if (error instanceof ApiError) throw error;
+  const msg = error instanceof Error ? error.message : '';
+  if (
+    error instanceof TypeError ||
+    msg === 'Load failed' ||
+    msg === 'Failed to fetch' ||
+    msg.includes('NetworkError')
+  ) {
+    throw new ApiError(networkErrorMessage(), 0);
+  }
+  throw error;
+}
 
 class ApiError extends Error {
   status: number;
@@ -40,7 +71,12 @@ async function request<T>(
     ...(options.headers || {}),
   };
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBaseUrl()}${path}`, { ...options, headers });
+  } catch (error) {
+    throwIfNetworkFailure(error);
+  }
 
   if (!res.ok) {
     let data: unknown;
@@ -74,9 +110,14 @@ async function request<T>(
 
 async function requestBlob(path: string): Promise<Blob> {
   const token = getToken();
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBaseUrl()}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch (error) {
+    throwIfNetworkFailure(error);
+  }
   if (!res.ok) {
     throw new ApiError('Export uğursuz oldu', res.status);
   }

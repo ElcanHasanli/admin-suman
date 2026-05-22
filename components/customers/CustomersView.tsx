@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Card } from '@/components/ui/Card';
+import { TableScroll } from '@/components/ui/TableScroll';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 
@@ -250,11 +251,11 @@ export function CustomersView() {
             value={form.debt}
             onChange={(e) => setForm({ ...form, debt: e.target.value })}
           />
-          <div className="flex justify-end gap-3 sm:col-span-2">
-            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
+          <div className="flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:justify-end sm:gap-3">
+            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)} className="w-full sm:w-auto">
               Ləğv et
             </Button>
-            <Button type="submit" loading={saving}>
+            <Button type="submit" loading={saving} className="w-full sm:w-auto">
               {editId ? 'Yenilə' : 'Əlavə et'}
             </Button>
           </div>
@@ -291,12 +292,12 @@ function Toolbar({
           className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
         />
       </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onExport}>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
+        <Button variant="secondary" onClick={onExport} className="w-full sm:w-auto">
           <Download size={16} />
           Excel
         </Button>
-        <Button onClick={onCreate}>
+        <Button onClick={onCreate} className="w-full sm:w-auto">
           <Plus size={16} />
           Yeni müştəri
         </Button>
@@ -317,55 +318,55 @@ function CustomersTable({
   onDelete: (id: number, name: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <TableScroll minWidth={720}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <th className="px-5 py-3">Ad Soyad</th>
-            <th className="px-5 py-3">Telefon</th>
-            <th className="px-5 py-3">Ünvan</th>
-            <th className="px-5 py-3">Qiymət</th>
-            <th className="px-5 py-3">Aktiv bidon</th>
-            <th className="px-5 py-3">Borc</th>
-            <th className="px-5 py-3 text-right">Əməliyyat</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ad Soyad</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Telefon</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ünvan</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Qiymət</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Aktiv bidon</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Borc</th>
+            <th className="px-3 py-2.5 text-right sm:px-5 sm:py-3">Əməliyyat</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={7} className="px-5 py-12 text-center text-slate-400">
+              <td colSpan={7} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                 Yüklənir...
               </td>
             </tr>
           ) : customers.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-5 py-12 text-center text-slate-400">
+              <td colSpan={7} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                 Müştəri tapılmadı
               </td>
             </tr>
           ) : (
             customers.map((c) => (
               <tr key={c.id} className="border-b border-slate-50 transition hover:bg-slate-50/50">
-                <td className="px-5 py-3.5 font-medium text-slate-900">{getCustomerName(c)}</td>
-                <td className="px-5 py-3.5 text-slate-600">{getCustomerPhone(c)}</td>
-                <td className="max-w-[200px] truncate px-5 py-3.5 text-slate-600">{c.address}</td>
-                <td className="px-5 py-3.5 font-medium">{formatCurrency(getCustomerPrice(c))}</td>
-                <td className="px-5 py-3.5 font-semibold text-sky-700">{getCustomerActiveBidons(c)}</td>
-                <td className="px-5 py-3.5 font-semibold text-red-600">
+                <td className="px-3 py-3 font-medium text-slate-900 sm:px-5 sm:py-3.5">{getCustomerName(c)}</td>
+                <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">{getCustomerPhone(c)}</td>
+                <td className="max-w-[140px] truncate px-3 py-3 text-slate-600 sm:max-w-[200px] sm:px-5 sm:py-3.5">{c.address}</td>
+                <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{formatCurrency(getCustomerPrice(c))}</td>
+                <td className="px-3 py-3 font-semibold text-sky-700 sm:px-5 sm:py-3.5">{getCustomerActiveBidons(c)}</td>
+                <td className="px-3 py-3 font-semibold text-red-600 sm:px-5 sm:py-3.5">
                   {formatCurrency(getCustomerDebt(c))}
                 </td>
-                <td className="px-5 py-3.5">
+                <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                   <div className="flex justify-end gap-1">
                     <button
                       onClick={() => onEdit(c)}
-                      className="rounded-lg p-2 text-slate-500 transition hover:bg-sky-50 hover:text-sky-600"
+                      className="rounded-lg p-2.5 text-slate-500 transition hover:bg-sky-50 hover:text-sky-600"
                       title="Redaktə"
                     >
                       <Pencil size={16} />
                     </button>
                     <button
                       onClick={() => onDelete(c.id, getCustomerName(c))}
-                      className="rounded-lg p-2 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+                      className="rounded-lg p-2.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                       title="Sil"
                     >
                       <Trash2 size={16} />
@@ -377,6 +378,6 @@ function CustomersTable({
           )}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }

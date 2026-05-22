@@ -33,6 +33,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, StatCard } from '@/components/ui/Card';
+import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
@@ -109,22 +110,24 @@ export function HistoryView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {presets.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => setPreset(p.key)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-              preset === p.key
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-        <Button variant="secondary" onClick={handleExport} className="ml-auto">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => setPreset(p.key)}
+              className={`shrink-0 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
+                preset === p.key
+                  ? 'bg-sky-600 text-white shadow-md'
+                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <Button variant="secondary" onClick={handleExport} className="w-full sm:ml-auto sm:w-auto">
           <Download size={16} />
           Excel export
         </Button>
@@ -142,7 +145,7 @@ export function HistoryView() {
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-6">
         <StatCard
           title="Tamamlanmış sifariş"
           value={loading ? '...' : summary?.totalOrders ?? 0}
@@ -195,11 +198,11 @@ export function HistoryView() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h3 className="font-semibold text-slate-900">
+        <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
+          <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
             Yerinə yetirilmiş sifarişlər ({orders.length})
           </h3>
-          <p className="text-sm text-slate-500">
+          <p className="text-xs text-slate-500 sm:text-sm">
             {dateFrom} — {dateTo}
           </p>
         </div>
@@ -227,7 +230,7 @@ function DateFields({
   onApply: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-end gap-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
       <Input
         label="Başlanğıc tarixi"
         type="date"
@@ -240,7 +243,7 @@ function DateFields({
         value={dateTo}
         onChange={(e) => setDateTo(e.target.value)}
       />
-      <Button type="button" variant="secondary" onClick={onApply}>
+      <Button type="button" variant="secondary" onClick={onApply} className="w-full sm:w-auto">
         Tətbiq et
       </Button>
     </div>
@@ -342,63 +345,71 @@ function HistoryTable({
   };
 
   return (
-    <div className="overflow-x-auto">
+    <>
+    <TableScroll minWidth={920}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <th className="px-5 py-3">Müştəri</th>
-            <th className="px-5 py-3">Kuryer</th>
-            <th className="px-5 py-3">Bidon</th>
-            <th className="px-5 py-3">Qiymət</th>
-            <th className="px-5 py-3">Ödəniş</th>
-
-            <th className="px-5 py-3">Ödəndi</th>
-            <th className="px-5 py-3">Tarix</th>
-            <th className="px-5 py-3">Status</th>
-            <th className="px-5 py-3 text-right">Əməliyyat</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Müştəri</th>
+            <th className="hidden px-3 py-2.5 md:table-cell sm:px-5 sm:py-3">Kuryer</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Bidon</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Qiymət</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ödəniş</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ödəndi</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Tarix</th>
+            <th className="hidden px-3 py-2.5 sm:table-cell sm:px-5 sm:py-3">Status</th>
+            <th className="px-3 py-2.5 text-right sm:px-5 sm:py-3">Əməliyyat</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={10} className="px-5 py-12 text-center text-slate-400">
+              <td colSpan={9} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                 Yüklənir...
               </td>
             </tr>
           ) : orders.length === 0 ? (
             <tr>
-              <td colSpan={10} className="px-5 py-12 text-center text-slate-400">
+              <td colSpan={9} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                 Bu tarix aralığında tamamlanmış sifariş yoxdur
               </td>
             </tr>
           ) : (
             orders.map((order) => (
               <tr key={order.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                <td className="px-5 py-3.5 font-medium">{getOrderCustomerName(order)}</td>
-                <td className="px-5 py-3.5 text-slate-600">{getOrderCourierName(order)}</td>
-                <td className="px-5 py-3.5">{getOrderBidonCount(order)}</td>
-                <td className="px-5 py-3.5 font-medium">{formatCurrency(order.price)}</td>
-                <td className="px-5 py-3.5">
+                <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">
+                  <p>{getOrderCustomerName(order)}</p>
+                  <p className="mt-0.5 text-xs text-slate-400 md:hidden">
+                    {getOrderCourierName(order)}
+                  </p>
+                </td>
+                <td className="hidden px-3 py-3 text-slate-600 md:table-cell sm:px-5 sm:py-3.5">
+                  {getOrderCourierName(order)}
+                </td>
+                <td className="px-3 py-3 sm:px-5 sm:py-3.5">{getOrderBidonCount(order)}</td>
+                <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{formatCurrency(order.price)}</td>
+                <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                   <PaymentTypeCell order={order} />
                 </td>
-             
-                <td className="px-5 py-3.5">
+                <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                   <OrderPaidStatus order={order} />
                 </td>
-                <td className="px-5 py-3.5 text-slate-600">{getOrderDate(order)}</td>
-                <td className="px-5 py-3.5">
+                <td className="whitespace-nowrap px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
+                  {getOrderDate(order)}
+                </td>
+                <td className="hidden px-3 py-3 sm:table-cell sm:px-5 sm:py-3.5">
                   <Badge variant={orderStatusVariant(order.status)}>
                     {getOrderStatusLabel(order.status)}
                   </Badge>
                 </td>
-                <td className="px-5 py-3.5 text-right">
+                <td className="px-3 py-3 text-right sm:px-5 sm:py-3.5">
                   {!isOrderPaid(order) ? (
                     <Button
                       type="button"
                       variant="success"
                       loading={markingId === order.id}
                       onClick={() => handleMarkPaid(order)}
-                      className="ml-auto whitespace-nowrap px-3 py-1.5 text-xs"
+                      className="ml-auto w-full whitespace-nowrap px-3 text-xs sm:w-auto sm:py-1.5"
                     >
                       Ödənildi et
                     </Button>
@@ -411,10 +422,11 @@ function HistoryTable({
           )}
         </tbody>
       </table>
+    </TableScroll>
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
       {ConfirmDialog}
-    </div>
+    </>
   );
 }

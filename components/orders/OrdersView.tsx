@@ -40,6 +40,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Card } from '@/components/ui/Card';
+import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
@@ -255,13 +256,13 @@ export function OrdersView() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <OrderSearchBar search={search} onSearch={setSearch} />
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} className="w-full shrink-0 sm:w-auto">
             <Plus size={16} />
             Yeni sifariş
           </Button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {(
             [
               ['all', 'Hamısı'],
@@ -274,7 +275,7 @@ export function OrdersView() {
               key={key}
               type="button"
               onClick={() => setFilter(key)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                 filter === key
                   ? 'bg-sky-600 text-white'
                   : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
@@ -286,21 +287,21 @@ export function OrdersView() {
           <button
             type="button"
             onClick={() => applyPreset('today')}
-            className="rounded-lg bg-white px-3 py-1.5 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+            className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
           >
             Bu gün
           </button>
           <button
             type="button"
             onClick={() => applyPreset('week')}
-            className="rounded-lg bg-white px-3 py-1.5 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+            className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
           >
             Bu həftə
           </button>
         </div>
 
         {filter === 'range' && (
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-end">
             <Input
               label="Başlanğıc"
               type="date"
@@ -313,7 +314,7 @@ export function OrdersView() {
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
             />
-            <Button type="button" variant="secondary" onClick={load}>
+            <Button type="button" variant="secondary" onClick={load} className="w-full sm:w-auto">
               Tətbiq et
             </Button>
           </div>
@@ -321,29 +322,29 @@ export function OrdersView() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
+        <TableScroll minWidth={760}>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <th className="px-5 py-3">Müştəri</th>
-                <th className="px-5 py-3">Kuryer</th>
-                <th className="px-5 py-3">Bidon</th>
-                <th className="px-5 py-3">Qiymət</th>
-                <th className="px-5 py-3">Tarix</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Əməliyyat</th>
+                <th className="px-3 py-2.5 sm:px-5 sm:py-3">Müştəri</th>
+                <th className="hidden px-3 py-2.5 sm:table-cell sm:px-5 sm:py-3">Kuryer</th>
+                <th className="px-3 py-2.5 sm:px-5 sm:py-3">Bidon</th>
+                <th className="px-3 py-2.5 sm:px-5 sm:py-3">Qiymət</th>
+                <th className="px-3 py-2.5 sm:px-5 sm:py-3">Tarix</th>
+                <th className="px-3 py-2.5 sm:px-5 sm:py-3">Status</th>
+                <th className="px-3 py-2.5 text-right sm:px-5 sm:py-3">Əməliyyat</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                     Yüklənir...
                   </td>
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                     Sifariş tapılmadı
                   </td>
                 </tr>
@@ -353,31 +354,36 @@ export function OrdersView() {
                     key={order.id}
                     className="border-b border-slate-50 transition hover:bg-slate-50/50"
                   >
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                       <p className="font-medium text-slate-900">{getOrderCustomerName(order)}</p>
                       <p className="text-xs text-slate-500">{order.address}</p>
+                      <p className="mt-0.5 text-xs text-slate-400 sm:hidden">
+                        {getOrderCourierName(order)}
+                      </p>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600">{getOrderCourierName(order)}</td>
-                    <td className="px-5 py-3.5 font-semibold">{getOrderBidonCount(order)}</td>
-                    <td className="px-5 py-3.5 font-medium">{formatCurrency(order.price)}</td>
-                    <td className="px-5 py-3.5 text-slate-600">
-                      <span className="flex items-center gap-1">
-                        <Calendar size={14} />
+                    <td className="hidden px-3 py-3 text-slate-600 sm:table-cell sm:px-5 sm:py-3.5">
+                      {getOrderCourierName(order)}
+                    </td>
+                    <td className="px-3 py-3 font-semibold sm:px-5 sm:py-3.5">{getOrderBidonCount(order)}</td>
+                    <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{formatCurrency(order.price)}</td>
+                    <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
+                      <span className="flex items-center gap-1 whitespace-nowrap">
+                        <Calendar size={14} className="shrink-0" />
                         {getOrderDate(order) || '—'}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                       <Badge variant={orderStatusVariant(order.status)}>
                         {getOrderStatusLabel(order.status)}
                       </Badge>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                       <div className="flex justify-end gap-1">
                         {!isOrderCompleted(order) && (
                           <button
                             type="button"
                             onClick={() => handleMarkDone(order)}
-                            className="rounded-lg p-2 text-emerald-600 transition hover:bg-emerald-50"
+                            className="rounded-lg p-2.5 text-emerald-600 transition hover:bg-emerald-50"
                             title="Tamamla"
                           >
                             <CheckCircle size={16} />
@@ -386,14 +392,14 @@ export function OrdersView() {
                         <button
                           type="button"
                           onClick={() => openEdit(order)}
-                          className="rounded-lg p-2 text-slate-500 transition hover:bg-sky-50 hover:text-sky-600"
+                          className="rounded-lg p-2.5 text-slate-500 transition hover:bg-sky-50 hover:text-sky-600"
                         >
                           <Pencil size={16} />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(order)}
-                          className="rounded-lg p-2 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+                          className="rounded-lg p-2.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -404,7 +410,7 @@ export function OrdersView() {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
 
       <Modal
@@ -511,7 +517,7 @@ function OrderSearchBar({
   onSearch: (v: string) => void;
 }) {
   return (
-    <div className="relative max-w-md flex-1">
+    <div className="relative w-full min-w-0 flex-1 lg:max-w-md">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
       <input
         value={search}
@@ -533,11 +539,11 @@ function OrderFormActions({
   edit: boolean;
 }) {
   return (
-    <div className="flex justify-end gap-3 pt-2">
-      <Button type="button" variant="secondary" onClick={onCancel}>
+    <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
+      <Button type="button" variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
         Ləğv et
       </Button>
-      <Button type="submit" loading={saving}>
+      <Button type="submit" loading={saving} className="w-full sm:w-auto">
         {edit ? 'Yenilə' : 'Yarat'}
       </Button>
     </div>
