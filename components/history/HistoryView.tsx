@@ -4,34 +4,58 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Download,
   TrendingUp,
+  TrendingDown,
   CheckCircle,
   Banknote,
   CreditCard,
   CircleDollarSign,
   XCircle,
+  Plus,
+  Trash2,
+  Wallet,
 } from 'lucide-react';
-import { exportHistoryExcel, getHistory, markOrderPaid } from '@/lib/api';
-import type { DateRangePreset, HistorySummary, Order } from '@/lib/types';
+import {
+  createExpense,
+  deleteExpense,
+  exportHistoryExcel,
+  getCouriers,
+  getHistory,
+  markOrderPaid,
+} from '@/lib/api';
+import type {
+  Courier,
+  DateRangePreset,
+  DebtPayment,
+  Expense,
+  HistorySummary,
+  Order,
+} from '@/lib/types';
 import {
   downloadBlob,
   formatCurrency,
+  formatDateTime,
+  getCourierName,
   getDateRange,
+  getDebtCollected,
+  getNetRevenue,
   getOrderBidonCount,
   getOrderCourierName,
   getOrderCustomerName,
   getOrderDate,
+  getOrderRevenue,
   getOrderStatusLabel,
   formatPaidAt,
   getOrderPaidLabel,
   getCreditRevenue,
-  getOrderCreditRevenueAmount,
   getPaymentTypeLabel,
+  getTotalExpenses,
   getUnpaidCreditDebt,
-  isOrderCreditPayment,
   isOrderPaid,
+  parseExpenseAmount,
 } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { Card, StatCard } from '@/components/ui/Card';
 import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
@@ -40,12 +64,23 @@ import { useConfirm } from '@/components/ui/ConfirmModal';
 
 export function HistoryView() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [debtPayments, setDebtPayments] = useState<DebtPayment[]>([]);
+  const [couriers, setCouriers] = useState<Courier[]>([]);
   const [summary, setSummary] = useState<HistorySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState<DateRangePreset>('today');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const { requestConfirm, ConfirmDialog } = useConfirm();
+
+  useEffect(() => {
+    getCouriers()
+      .then(setCouriers)
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +93,8 @@ export function HistoryView() {
       );
       setOrders(data.orders);
       setSummary(data.summary);
+      setExpenses(data.expenses ?? []);
+      setDebtPayments(data.debtPayments ?? []);
     } catch {
       setToast({ message: 'Tarixçə yüklənə bilmədi', type: 'error' });
     } finally {
@@ -127,10 +164,16 @@ export function HistoryView() {
             </button>
           ))}
         </div>
-        <Button variant="secondary" onClick={handleExport} className="w-full sm:ml-auto sm:w-auto">
-          <Download size={16} />
-          Excel export
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
+          <Button variant="secondary" onClick={() => setExpenseModalOpen(true)} className="w-full sm:w-auto">
+            <Plus size={16} />
+            Xərc əlavə et
+          </Button>
+          <Button variant="secondary" onClick={handleExport} className="w-full sm:w-auto">
+            <Download size={16} />
+            Excel export
+          </Button>
+        </div>
       </div>
 
       {preset === 'custom' && (
@@ -145,11 +188,16 @@ export function HistoryView() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
-          title="Tamamlanmış sifariş"
-          value={loading ? '...' : summary?.totalOrders ?? 0}
-          icon={<CheckCircle size={20} />}
+          title="Xalis gəlir"
+          value={loading ? '...' : formatCurrency(getNetRevenue(summary))}
+          subtitle={
+            loading || !summary
+              ? undefined
+              : `Gəlir ${formatCurrency(getOrderRevenue(summary))} − xərclər ${formatCurrency(getTotalExpenses(summary))}`
+          }
+          icon={<TrendingUp size={20} />}
           accent="emerald"
         />
         <StatCard
@@ -158,10 +206,30 @@ export function HistoryView() {
           subtitle={
             loading || !summary
               ? undefined
-              : 'Nağd + Kart + Nisyə (gəlir)'
+              : `Sifariş ${formatCurrency(getOrderRevenue(summary))} + borc ${formatCurrency(getDebtCollected(summary))}`
           }
-          icon={<TrendingUp size={20} />}
+          icon={<Wallet size={20} />}
           accent="sky"
+        />
+        <StatCard
+          title="Borc ödənişləri"
+          value={loading ? '...' : formatCurrency(getDebtCollected(summary))}
+          subtitle={loading ? undefined : `${debtPayments.length} qeyd`}
+          icon={<Banknote size={20} />}
+          accent="amber"
+        />
+        <StatCard
+          title="Kuryer xərcləri"
+          value={loading ? '...' : formatCurrency(getTotalExpenses(summary))}
+          subtitle={loading ? undefined : `${expenses.length} xərc qeydi`}
+          icon={<TrendingDown size={20} />}
+          accent="rose"
+        />
+        <StatCard
+          title="Tamamlanmış sifariş"
+          value={loading ? '...' : summary?.totalOrders ?? 0}
+          icon={<CheckCircle size={20} />}
+          accent="violet"
         />
         <StatCard
           title="Nağd"
@@ -182,20 +250,37 @@ export function HistoryView() {
           icon={<CircleDollarSign size={20} />}
           accent="violet"
         />
-        <StatCard
-          title="Nisyə borcu"
-          value={loading ? '...' : formatCurrency(unpaidCredit.amount)}
-          subtitle={
-            loading
-              ? undefined
-              : unpaidCredit.count > 0
-                ? `${unpaidCredit.count} ödənilməmiş sifariş`
-                : 'Ödənilməmiş borc yoxdur'
-          }
-          icon={<CircleDollarSign size={20} />}
-          accent="rose"
-        />
       </div>
+
+      {unpaidCredit.amount > 0 && (
+        <p className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-800 ring-1 ring-rose-100">
+          Nisyə borcu: {formatCurrency(unpaidCredit.amount)}
+          {unpaidCredit.count > 0 ? ` (${unpaidCredit.count} ödənilməmiş sifariş)` : ''}
+        </p>
+      )}
+
+      <ExpensesTable
+        loading={loading}
+        expenses={expenses}
+        onDelete={async (id) => {
+          const ok = await requestConfirm({
+            title: 'Xərci sil',
+            message: 'Bu xərc qeydini silmək istəyirsiniz?',
+            confirmLabel: 'Sil',
+            variant: 'danger',
+          });
+          if (!ok) return;
+          try {
+            await deleteExpense(id);
+            setToast({ message: 'Xərc silindi', type: 'success' });
+            load();
+          } catch {
+            setToast({ message: 'Silinmə uğursuz oldu', type: 'error' });
+          }
+        }}
+      />
+
+      <DebtPaymentsTable loading={loading} payments={debtPayments} />
 
       <Card className="overflow-hidden">
         <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
@@ -209,10 +294,267 @@ export function HistoryView() {
         <HistoryTable loading={loading} orders={orders} onMarkPaid={load} />
       </Card>
 
+      <AddExpenseModal
+        open={expenseModalOpen}
+        couriers={couriers}
+        onClose={() => setExpenseModalOpen(false)}
+        onSaved={() => {
+          setExpenseModalOpen(false);
+          setToast({ message: 'Xərc əlavə edildi', type: 'success' });
+          load();
+        }}
+        onError={(msg) => setToast({ message: msg, type: 'error' })}
+      />
+
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
+      {ConfirmDialog}
     </div>
+  );
+}
+
+function ExpensesTable({
+  loading,
+  expenses,
+  onDelete,
+}: {
+  loading: boolean;
+  expenses: Expense[];
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
+        <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
+          Kuryer xərcləri ({expenses.length})
+        </h3>
+        <p className="text-xs text-slate-500 sm:text-sm">Yanacaq və digər xərclər</p>
+      </div>
+      <TableScroll minWidth={640}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Kuryer</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Məbləğ</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Təsvir</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Kateqoriya</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Tarix</th>
+              <th className="px-3 py-2.5 text-right sm:px-5 sm:py-3">Əməliyyat</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-10 text-center text-slate-400">
+                  Yüklənir...
+                </td>
+              </tr>
+            ) : expenses.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-10 text-center text-slate-400">
+                  Bu dövrdə xərc qeydi yoxdur
+                </td>
+              </tr>
+            ) : (
+              expenses.map((e) => (
+                <tr key={e.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{e.courier_name}</td>
+                  <td className="px-3 py-3 font-semibold text-rose-700 sm:px-5 sm:py-3.5">
+                    {formatCurrency(parseExpenseAmount(e.amount))}
+                  </td>
+                  <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">{e.description}</td>
+                  <td className="px-3 py-3 text-slate-500 sm:px-5 sm:py-3.5">{e.category || '—'}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-500 sm:px-5 sm:py-3.5">
+                    {formatDateTime(e.created_at)}
+                  </td>
+                  <td className="px-3 py-3 text-right sm:px-5 sm:py-3.5">
+                    <button
+                      type="button"
+                      onClick={() => onDelete(e.id)}
+                      className="rounded-lg p-2.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                      title="Sil"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </TableScroll>
+    </Card>
+  );
+}
+
+function DebtPaymentsTable({
+  loading,
+  payments,
+}: {
+  loading: boolean;
+  payments: DebtPayment[];
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
+        <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
+          Borc ödənişləri ({payments.length})
+        </h3>
+        <p className="text-xs text-slate-500 sm:text-sm">Müştəri borcu azaldılanda</p>
+      </div>
+      <TableScroll minWidth={600}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Müştəri</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ödənilən</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Əvvəl / Sonra</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Tarix</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="px-3 py-10 text-center text-slate-400">
+                  Yüklənir...
+                </td>
+              </tr>
+            ) : payments.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-3 py-10 text-center text-slate-400">
+                  Bu dövrdə borc ödənişi yoxdur
+                </td>
+              </tr>
+            ) : (
+              payments.map((p, i) => (
+                <tr key={p.id ?? i} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">
+                    {p.customer_name || '—'}
+                  </td>
+                  <td className="px-3 py-3 font-semibold text-emerald-700 sm:px-5 sm:py-3.5">
+                    {formatCurrency(p.amount)}
+                  </td>
+                  <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
+                    {p.previous_debt != null && p.new_debt != null
+                      ? `${formatCurrency(p.previous_debt)} → ${formatCurrency(p.new_debt)}`
+                      : '—'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-500 sm:px-5 sm:py-3.5">
+                    {formatDateTime(p.created_at)}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </TableScroll>
+    </Card>
+  );
+}
+
+function AddExpenseModal({
+  open,
+  couriers,
+  onClose,
+  onSaved,
+  onError,
+}: {
+  open: boolean;
+  couriers: Courier[];
+  onClose: () => void;
+  onSaved: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [courierId, setCourierId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setCourierId('');
+      setAmount('');
+      setDescription('');
+      setCategory('');
+    }
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = Number(amount);
+    if (!courierId || !description.trim() || isNaN(amt) || amt <= 0) {
+      onError('Kuryer, məbləğ və təsvir mütləqdir');
+      return;
+    }
+    setSaving(true);
+    try {
+      await createExpense({
+        courier_id: Number(courierId),
+        amount: amt,
+        description: description.trim(),
+        category: category.trim() || undefined,
+      });
+      onSaved();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Xərc əlavə olunmadı');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Kuryer xərci əlavə et">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">Kuryer</label>
+          <select
+            value={courierId}
+            onChange={(e) => setCourierId(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            required
+          >
+            <option value="">Seçin...</option>
+            {couriers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {getCourierName(c)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Input
+          label="Məbləğ (₼)"
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+        />
+        <Input
+          label="Təsvir"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Yanacaq, təmir..."
+          required
+        />
+        <Input
+          label="Kateqoriya (opsional)"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="yanacaq"
+        />
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
+            Ləğv et
+          </Button>
+          <Button type="submit" loading={saving} className="w-full sm:w-auto">
+            Əlavə et
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -267,19 +609,6 @@ function PaymentTypeCell({ order }: { order: Order }) {
       {label}
     </span>
   );
-}
-
-function CreditRevenueCell({ order }: { order: Order }) {
-  if (!isOrderCreditPayment(order)) {
-    return <span className="text-slate-300">—</span>;
-  }
-
-  const amount = getOrderCreditRevenueAmount(order);
-  if (amount > 0) {
-    return <span className="font-medium text-emerald-700">{formatCurrency(amount)}</span>;
-  }
-
-  return <span className="text-xs font-medium text-slate-400">0 (borc)</span>;
 }
 
 function OrderPaidStatus({ order }: { order: Order }) {

@@ -15,11 +15,40 @@ export interface Customer {
   id: number;
   name: string;
   surname: string;
+  display_name?: string;
   phone: string;
+  phone2?: string | null;
   address: string;
   price: number;
   active_bidons: number;
   debt: number;
+}
+
+export interface CustomerPayload {
+  full_name?: string;
+  name?: string;
+  surname?: string;
+  phone: string;
+  phone2?: string;
+  address: string;
+  price: number;
+  active_bidons: number;
+  debt: number;
+}
+
+export interface DebtPayment {
+  id?: number;
+  customer_id?: number;
+  customer_name?: string;
+  amount: number;
+  previous_debt?: number;
+  new_debt?: number;
+  created_at: string;
+}
+
+export interface UpdateCustomerResponse {
+  customer: Customer;
+  debt_payment?: DebtPayment | null;
 }
 
 export interface Courier {
@@ -31,6 +60,16 @@ export interface Courier {
 
 export type PaymentType = 'cash' | 'card' | 'credit';
 
+export type OrderNoteAuthorRole = 'admin' | 'courier';
+
+export interface OrderNote {
+  id: number;
+  body: string;
+  author_role: OrderNoteAuthorRole;
+  author_name?: string;
+  created_at?: string;
+}
+
 export interface Order {
   id: number;
   customer_id?: number;
@@ -40,13 +79,14 @@ export interface Order {
   customer_name?: string;
   customer_surname?: string;
   customer_phone?: string;
-  customer?: { name?: string; surname?: string; phone?: string };
+  customer?: { name?: string; surname?: string; phone?: string; display_name?: string };
   courier_name?: string;
   bidons_count?: number;
   address?: string;
   price?: number | string;
   status?: OrderStatus | string;
-  notes?: string;
+  /** V2: qeydlər massivi; köhnə API: tək sətir string */
+  notes?: OrderNote[] | string;
   created_at?: string;
   completed_at?: string;
   payment_type?: PaymentType | string;
@@ -55,28 +95,38 @@ export interface Order {
   paid_at?: string | null;
 }
 
-export interface CustomerPayload {
-  name: string;
-  surname: string;
-  phone: string;
-  address: string;
-  price: number;
-  active_bidons: number;
-  debt: number;
-}
-
 export interface OrderPayload {
   customer_id: number;
   courier_id: number;
   bidons_count: number;
   address: string;
   price: number;
-  notes?: string;
+}
+
+export interface Expense {
+  id: number;
+  courier_id?: number;
+  courier_name: string;
+  amount: number | string;
+  description: string;
+  category?: string;
+  created_at: string;
+}
+
+export interface ExpensePayload {
+  courier_id: number;
+  amount: number;
+  description: string;
+  category?: string;
 }
 
 export interface HistorySummary {
   totalOrders: number;
   totalRevenue: number;
+  orderRevenue?: number;
+  debtCollected?: number;
+  totalExpenses?: number;
+  netRevenue?: number;
   cashRevenue: number;
   cardRevenue: number;
   creditRevenue: number;
@@ -88,6 +138,10 @@ export interface HistoryResponse {
   period: string;
   summary: HistorySummary;
   orders: Order[];
+  expenses?: Expense[];
+  debtPayments?: DebtPayment[];
 }
 
 export type DateRangePreset = 'today' | 'week' | 'month' | 'custom';
+
+export type ExpensePeriod = 'today' | 'week' | 'month' | 'custom';

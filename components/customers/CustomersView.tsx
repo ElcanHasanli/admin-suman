@@ -10,16 +10,19 @@ import {
   getCustomers,
   updateCustomer,
 } from '@/lib/api';
-import type { Customer, CustomerPayload } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import {
+  buildCustomerPayload,
+  customerToFormFields,
   downloadBlob,
   formatCurrency,
+  formatCustomerPhones,
   getCustomerActiveBidons,
   getCustomerDebt,
   getCustomerName,
   getCustomerPhone,
+  getCustomerPhone2,
   getCustomerPrice,
-  normalizePhone,
 } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -30,9 +33,9 @@ import { Toast, ToastType } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 
 const emptyForm = {
-  firstName: '',
-  lastName: '',
+  fullName: '',
   phone: '',
+  phone2: '',
   address: '',
   price: '',
   activeBidons: '',
@@ -75,8 +78,14 @@ export function CustomersView() {
     return customers.filter((c) => {
       const name = getCustomerName(c).toLowerCase();
       const phone = getCustomerPhone(c).toLowerCase();
+      const phone2 = getCustomerPhone2(c).toLowerCase();
       const address = (c.address || '').toLowerCase();
-      return name.includes(q) || phone.includes(q) || address.includes(q);
+      return (
+        name.includes(q) ||
+        phone.includes(q) ||
+        phone2.includes(q) ||
+        address.includes(q)
+      );
     });
   }, [customers, search]);
 
@@ -88,15 +97,7 @@ export function CustomersView() {
 
   const openEdit = (c: Customer) => {
     setEditId(c.id);
-    setForm({
-      firstName: c.name || '',
-      lastName: c.surname || '',
-      phone: getCustomerPhone(c),
-      address: c.address || '',
-      price: String(getCustomerPrice(c) || ''),
-      activeBidons: String(getCustomerActiveBidons(c)),
-      debt: String(getCustomerDebt(c)),
-    });
+    setForm(customerToFormFields(c));
     setModalOpen(true);
   };
 
@@ -133,8 +134,8 @@ export function CustomersView() {
     const activeBidons = form.activeBidons === '' ? 0 : Number(form.activeBidons);
     const debt = form.debt === '' ? 0 : Number(form.debt);
 
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.address.trim() || !form.phone.trim()) {
-      showToast('Bütün əsas sahələri doldurun', 'error');
+    if (!form.fullName.trim() || !form.address.trim() || !form.phone.trim()) {
+      showToast('Ad, telefon və ünvan mütləqdir', 'error');
       return;
     }
     if (isNaN(price) || price <= 0) {
@@ -142,21 +143,28 @@ export function CustomersView() {
       return;
     }
 
-    const payload: CustomerPayload = {
-      name: form.firstName.trim(),
-      surname: form.lastName.trim(),
-      address: form.address.trim(),
-      phone: normalizePhone(form.phone.trim()),
+    const payload = buildCustomerPayload({
+      fullName: form.fullName,
+      phone: form.phone,
+      phone2: form.phone2,
+      address: form.address,
       price,
-      active_bidons: activeBidons,
+      activeBidons,
       debt,
-    };
+    });
 
     setSaving(true);
     try {
       if (editId) {
-        await updateCustomer(editId, payload);
-        showToast('Müştəri yeniləndi', 'success');
+        const result = await updateCustomer(editId, payload);
+        if (result.debt_payment && result.debt_payment.amount > 0) {
+          showToast(
+            `Müştəri yeniləndi. Borc ödənişi: ${formatCurrency(result.debt_payment.amount)} (tarixçədə görünəcək)`,
+            'success'
+          );
+        } else {
+          showToast('Müştəri yeniləndi', 'success');
+        }
       } else {
         await createCustomer(payload);
         showToast('Yeni müştəri əlavə edildi', 'success');
@@ -200,24 +208,30 @@ export function CustomersView() {
         title={editId ? 'Müştərini redaktə et' : 'Yeni müştəri'}
       >
         <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Ad"
-            value={form.firstName}
-            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-            required
-          />
-          <Input
-            label="Soyad"
-            value={form.lastName}
-            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-            required
-          />
+          <div className="sm:col-span-2">
+            <Input
+              label="Ad Soyad"
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              placeholder="Elcan Həsənli"
+              required
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Soyad opsionaldır — boşluqdan sonra yazıla bilər
+            </p>
+          </div>
           <Input
             label="Telefon"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            placeholder="+994501234567"
+            placeholder="050 123 45 67"
             required
+          />
+          <Input
+            label="Telefon 2 (opsional)"
+            value={form.phone2}
+            onChange={(e) => setForm({ ...form, phone2: e.target.value })}
+            placeholder="055 999 88 77"
           />
           <Input
             label="Qiymət (₼/bidon)"
@@ -251,8 +265,18 @@ export function CustomersView() {
             value={form.debt}
             onChange={(e) => setForm({ ...form, debt: e.target.value })}
           />
+          {editId && (
+            <p className="text-xs text-slate-500 sm:col-span-2">
+              Borc azaldıqda ödənilən məbləğ tarixçədə «Borc ödənişi» kimi qeyd olunur.
+            </p>
+          )}
           <div className="flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:justify-end sm:gap-3">
-            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setModalOpen(false)}
+              className="w-full sm:w-auto"
+            >
               Ləğv et
             </Button>
             <Button type="submit" loading={saving} className="w-full sm:w-auto">
@@ -302,7 +326,7 @@ function Toolbar({
           Yeni müştəri
         </Button>
       </div>
-      </div>
+    </div>
   );
 }
 
@@ -318,7 +342,7 @@ function CustomersTable({
   onDelete: (id: number, name: string) => void;
 }) {
   return (
-    <TableScroll minWidth={720}>
+    <TableScroll minWidth={760}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -347,11 +371,21 @@ function CustomersTable({
           ) : (
             customers.map((c) => (
               <tr key={c.id} className="border-b border-slate-50 transition hover:bg-slate-50/50">
-                <td className="px-3 py-3 font-medium text-slate-900 sm:px-5 sm:py-3.5">{getCustomerName(c)}</td>
-                <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">{getCustomerPhone(c)}</td>
-                <td className="max-w-[140px] truncate px-3 py-3 text-slate-600 sm:max-w-[200px] sm:px-5 sm:py-3.5">{c.address}</td>
-                <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{formatCurrency(getCustomerPrice(c))}</td>
-                <td className="px-3 py-3 font-semibold text-sky-700 sm:px-5 sm:py-3.5">{getCustomerActiveBidons(c)}</td>
+                <td className="px-3 py-3 font-medium text-slate-900 sm:px-5 sm:py-3.5">
+                  {getCustomerName(c)}
+                </td>
+                <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
+                  {formatCustomerPhones(c)}
+                </td>
+                <td className="max-w-[140px] truncate px-3 py-3 text-slate-600 sm:max-w-[200px] sm:px-5 sm:py-3.5">
+                  {c.address}
+                </td>
+                <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">
+                  {formatCurrency(getCustomerPrice(c))}
+                </td>
+                <td className="px-3 py-3 font-semibold text-sky-700 sm:px-5 sm:py-3.5">
+                  {getCustomerActiveBidons(c)}
+                </td>
                 <td className="px-3 py-3 font-semibold text-red-600 sm:px-5 sm:py-3.5">
                   {formatCurrency(getCustomerDebt(c))}
                 </td>

@@ -2,9 +2,14 @@ import type {
   Courier,
   Customer,
   CustomerPayload,
+  Expense,
+  ExpensePayload,
+  ExpensePeriod,
   HistoryResponse,
   Order,
+  OrderNote,
   OrderPayload,
+  UpdateCustomerResponse,
   User,
 } from './types';
 
@@ -160,15 +165,18 @@ export async function searchCustomers(q: string): Promise<Customer[]> {
   return data.customers ?? [];
 }
 
-export async function createCustomer(payload: CustomerPayload) {
-  return request('/customers', {
+export async function createCustomer(payload: CustomerPayload): Promise<Customer> {
+  return request<Customer>('/customers', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-export async function updateCustomer(id: number, payload: Partial<CustomerPayload>) {
-  return request(`/customers/${id}`, {
+export async function updateCustomer(
+  id: number,
+  payload: Partial<CustomerPayload>
+): Promise<UpdateCustomerResponse> {
+  return request<UpdateCustomerResponse>(`/customers/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
@@ -219,11 +227,54 @@ export async function getOrderById(id: number): Promise<Order> {
   return request<Order>(`/orders/${id}`);
 }
 
-export async function createOrder(payload: OrderPayload) {
-  return request('/orders', {
+export async function createOrder(payload: OrderPayload): Promise<Order> {
+  return request<Order>('/orders', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function getOrderNotes(orderId: number): Promise<OrderNote[]> {
+  const data = await request<OrderNote[] | { notes?: OrderNote[] }>(
+    `/orders/${orderId}/notes`
+  );
+  if (Array.isArray(data)) return data;
+  return data.notes ?? [];
+}
+
+export async function createOrderNote(orderId: number, body: string): Promise<OrderNote> {
+  return request<OrderNote>(`/orders/${orderId}/notes`, {
+    method: 'POST',
+    body: JSON.stringify({ body: body.trim() }),
+  });
+}
+
+export async function getExpenses(
+  period: ExpensePeriod,
+  courierId?: number,
+  startDate?: string,
+  endDate?: string
+): Promise<Expense[]> {
+  const params = new URLSearchParams({ period });
+  if (courierId) params.set('courier_id', String(courierId));
+  if (period === 'custom' && startDate && endDate) {
+    params.set('startDate', startDate);
+    params.set('endDate', endDate);
+  }
+  const data = await request<Expense[] | { expenses?: Expense[] }>(`/expenses?${params}`);
+  if (Array.isArray(data)) return data;
+  return data.expenses ?? [];
+}
+
+export async function createExpense(payload: ExpensePayload): Promise<Expense> {
+  return request<Expense>('/expenses', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteExpense(id: number): Promise<void> {
+  return request(`/expenses/${id}`, { method: 'DELETE' });
 }
 
 export async function updateOrder(id: number, payload: Partial<OrderPayload>) {

@@ -1,4 +1,4 @@
-import type { Customer, Order } from './types';
+import type { Customer, CustomerPayload, HistorySummary, Order, OrderNote } from './types';
 
 export function formatCurrency(amount: number | string | undefined): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount ?? 0;
@@ -6,11 +6,107 @@ export function formatCurrency(amount: number | string | undefined): string {
 }
 
 export function getCustomerName(customer: Customer): string {
+  if (customer.display_name?.trim()) return customer.display_name.trim();
   return `${customer.name || ''} ${customer.surname || ''}`.trim() || 'Naməlum';
 }
 
 export function getCustomerPhone(customer: Customer): string {
   return customer.phone || '';
+}
+
+export function getCustomerPhone2(customer: Customer): string {
+  return customer.phone2?.trim() || '';
+}
+
+/** Cədvəl üçün: əsas telefon (+ ikinci, varsa) */
+export function formatCustomerPhones(customer: Customer): string {
+  const p = getCustomerPhone(customer);
+  const p2 = getCustomerPhone2(customer);
+  return p2 ? `${p} · ${p2}` : p;
+}
+
+export function buildCustomerPayload(form: {
+  fullName: string;
+  phone: string;
+  phone2: string;
+  address: string;
+  price: number;
+  activeBidons: number;
+  debt: number;
+}): CustomerPayload {
+  const payload: CustomerPayload = {
+    full_name: form.fullName.trim(),
+    phone: form.phone.trim(),
+    address: form.address.trim(),
+    price: form.price,
+    active_bidons: form.activeBidons,
+    debt: form.debt,
+  };
+  const p2 = form.phone2.trim();
+  if (p2) payload.phone2 = p2;
+  return payload;
+}
+
+export function customerToFormFields(c: Customer) {
+  return {
+    fullName: getCustomerName(c),
+    phone: getCustomerPhone(c),
+    phone2: getCustomerPhone2(c),
+    address: c.address || '',
+    price: String(getCustomerPrice(c) || ''),
+    activeBidons: String(getCustomerActiveBidons(c)),
+    debt: String(getCustomerDebt(c)),
+  };
+}
+
+export function getOrderNotesList(order: Order): OrderNote[] {
+  if (Array.isArray(order.notes)) return order.notes;
+  return [];
+}
+
+export function getLegacyOrderNoteText(order: Order): string {
+  if (typeof order.notes === 'string') return order.notes;
+  return '';
+}
+
+export function getNetRevenue(summary?: HistorySummary | null): number {
+  if (!summary) return 0;
+  if (typeof summary.netRevenue === 'number') return summary.netRevenue;
+  return summary.totalRevenue ?? 0;
+}
+
+export function getDebtCollected(summary?: HistorySummary | null): number {
+  return summary?.debtCollected ?? 0;
+}
+
+export function getTotalExpenses(summary?: HistorySummary | null): number {
+  return summary?.totalExpenses ?? 0;
+}
+
+export function getOrderRevenue(summary?: HistorySummary | null): number {
+  if (typeof summary?.orderRevenue === 'number') return summary.orderRevenue;
+  return summary?.totalRevenue ?? 0;
+}
+
+export function formatDateTime(dateStr?: string): string {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr.slice(0, 16);
+  return d.toLocaleString('az-AZ', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function getNoteAuthorLabel(role: string): string {
+  return role === 'admin' ? 'Admin' : 'Kuryer';
+}
+
+export function parseExpenseAmount(amount: number | string): number {
+  return typeof amount === 'string' ? parseFloat(amount) || 0 : amount ?? 0;
 }
 
 export function getCustomerPrice(customer: Customer): number {
@@ -27,6 +123,7 @@ export function getCustomerDebt(customer: Customer): number {
 }
 
 export function getOrderCustomerName(order: Order): string {
+  if (order.customer?.display_name?.trim()) return order.customer.display_name.trim();
   if (order.customer_name || order.customer_surname) {
     return `${order.customer_name || ''} ${order.customer_surname || ''}`.trim();
   }
@@ -34,6 +131,8 @@ export function getOrderCustomerName(order: Order): string {
     return `${order.name || ''} ${order.surname || ''}`.trim();
   }
   if (order.customer) {
+    const dn = (order.customer as { display_name?: string }).display_name;
+    if (dn?.trim()) return dn.trim();
     return `${order.customer.name || ''} ${order.customer.surname || ''}`.trim();
   }
   return '—';
@@ -188,16 +287,6 @@ export function downloadBlob(blob: Blob, filename: string) {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
-}
-
-export function normalizePhone(phone: string): string {
-  let p = phone.trim();
-  if (!/^\+?\d{9,14}$/.test(p)) return p;
-  if (!p.startsWith('+994')) {
-    if (p.startsWith('0')) p = '+994' + p.slice(1);
-    else if (!p.startsWith('+')) p = '+994' + p;
-  }
-  return p;
 }
 
 export function getOrderStatusLabel(status?: string): string {

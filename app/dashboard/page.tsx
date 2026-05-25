@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Users, Package, CheckCircle, TrendingUp } from 'lucide-react';
 import { getCustomers, getHistory, getOrders } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getNetRevenue } from '@/lib/utils';
 import { StatCard } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 
@@ -29,7 +29,7 @@ export default function DashboardPage() {
           customers: customers.length,
           orders: orders.length,
           todayCompleted: history.summary.totalOrders,
-          revenue: history.summary.totalRevenue,
+          revenue: getNetRevenue(history.summary),
         });
       } catch {
         /* keep zeros */
@@ -79,7 +79,7 @@ function StatsGrid({
         accent="emerald"
       />
       <StatCard
-        title="Bu gün gəlir"
+        title="Bu gün xalis gəlir"
         value={loading ? '...' : formatCurrency(stats.revenue)}
         icon={<TrendingUp size={20} />}
         accent="amber"

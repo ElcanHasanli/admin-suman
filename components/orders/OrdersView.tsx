@@ -11,27 +11,33 @@ import {
 } from 'lucide-react';
 import {
   createOrder,
+  createOrderNote,
   deleteOrder,
   getCouriers,
+  getOrderNotes,
   getOrders,
   getCompletedOrders,
   markOrderDone,
   searchCustomers,
   updateOrder,
 } from '@/lib/api';
-import type { Courier, Customer, Order } from '@/lib/types';
+import type { Courier, Customer, Order, OrderNote } from '@/lib/types';
 import {
   formatCurrency,
+  formatCustomerPhones,
+  formatDateTime,
   getCourierName,
   getCustomerActiveBidons,
   getCustomerName,
-  getCustomerPhone,
   getCustomerPrice,
   getDateRange,
+  getLegacyOrderNoteText,
+  getNoteAuthorLabel,
   getOrderBidonCount,
   getOrderCourierName,
   getOrderCustomerName,
   getOrderDate,
+  getOrderNotesList,
   getOrderStatusLabel,
   isOrderCompleted,
   isOrderPending,
@@ -52,7 +58,6 @@ const emptyOrderForm = {
   courierId: '',
   bidons: '',
   address: '',
-  notes: '',
 };
 
 export function OrdersView() {
@@ -71,6 +76,9 @@ export function OrdersView() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showCustomerList, setShowCustomerList] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [newNoteBody, setNewNoteBody] = useState('');
+  const [orderNotes, setOrderNotes] = useState<OrderNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const { requestConfirm, ConfirmDialog } = useConfirm();
 
@@ -147,11 +155,25 @@ export function OrdersView() {
     setShowCustomerList(false);
   };
 
+  const loadOrderNotes = useCallback(async (orderId: number) => {
+    setNotesLoading(true);
+    try {
+      const notes = await getOrderNotes(orderId);
+      setOrderNotes(notes);
+    } catch {
+      setOrderNotes([]);
+    } finally {
+      setNotesLoading(false);
+    }
+  }, []);
+
   const openCreate = () => {
     setEditOrder(null);
     setForm(emptyOrderForm);
     setCustomerSearch('');
     setSelectedCustomer(null);
+    setNewNoteBody('');
+    setOrderNotes([]);
     setModalOpen(true);
   };
 
@@ -162,10 +184,20 @@ export function OrdersView() {
       courierId: String(order.courier_id || ''),
       bidons: String(getOrderBidonCount(order)),
       address: order.address || '',
-      notes: order.notes || '',
     });
     setCustomerSearch(getOrderCustomerName(order));
     setSelectedCustomer(null);
+    setNewNoteBody('');
+    const embedded = getOrderNotesList(order);
+    const legacy = getLegacyOrderNoteText(order);
+    setOrderNotes(
+      embedded.length > 0
+        ? embedded
+        : legacy
+          ? [{ id: 0, body: legacy, author_role: 'admin', created_at: order.created_at }]
+          : []
+    );
+    loadOrderNotes(order.id);
     setModalOpen(true);
   };
 
@@ -218,16 +250,21 @@ export function OrdersView() {
       bidons_count: bidons,
       address: form.address.trim(),
       price: unitPrice * bidons,
-      notes: form.notes.trim(),
     };
 
     setSaving(true);
     try {
       if (editOrder) {
         await updateOrder(editOrder.id, payload);
+        if (newNoteBody.trim()) {
+          await createOrderNote(editOrder.id, newNoteBody);
+        }
         showToast('Sifariş yeniləndi', 'success');
       } else {
-        await createOrder(payload);
+        const created = await createOrder(payload);
+        if (newNoteBody.trim()) {
+          await createOrderNote(created.id, newNoteBody);
+        }
         showToast('Sifariş yaradıldı', 'success');
       }
       setModalOpen(false);
@@ -447,7 +484,7 @@ export function OrdersView() {
                       className="w-full px-4 py-2.5 text-left text-sm hover:bg-sky-50"
                     >
                       <span className="font-medium">{getCustomerName(c)}</span>
-                      <span className="ml-2 text-slate-500">{getCustomerPhone(c)}</span>
+                      <span className="ml-2 text-slate-500">{formatCustomerPhones(c)}</span>
                     </button>
                   </li>
                 ))}
@@ -485,10 +522,11 @@ export function OrdersView() {
                 ))}
               </select>
             </div>
-            <Input
-              label="Qeyd"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            <OrderNotesSection
+              loading={notesLoading}
+              notes={orderNotes}
+              newNoteBody={newNoteBody}
+              onNewNoteChange={setNewNoteBody}
             />
             {estimatedPrice > 0 && (
               <p className="sm:col-span-2 text-sm text-slate-600">
@@ -505,6 +543,61 @@ export function OrdersView() {
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
       {ConfirmDialog}
+    </div>
+  );
+}
+
+function OrderNotesSection({
+  loading,
+  notes,
+  newNoteBody,
+  onNewNoteChange,
+}: {
+  loading: boolean;
+  notes: OrderNote[];
+  newNoteBody: string;
+  onNewNoteChange: (v: string) => void;
+}) {
+  return (
+    <div className="sm:col-span-2">
+      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+        Sifariş qeydləri
+      </label>
+      {loading ? (
+        <p className="mb-3 text-sm text-slate-400">Qeydlər yüklənir...</p>
+      ) : notes.length > 0 ? (
+        <ul className="mb-3 max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/80 p-3">
+          {notes.map((n) => (
+            <li key={n.id} className="text-sm">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span
+                  className={`rounded-full px-2 py-0.5 font-semibold ${
+                    n.author_role === 'admin'
+                      ? 'bg-sky-100 text-sky-700'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {getNoteAuthorLabel(n.author_role)}
+                </span>
+                {n.created_at && <span>{formatDateTime(n.created_at)}</span>}
+              </div>
+              <p className="mt-1 text-slate-800">{n.body}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mb-3 text-sm text-slate-400">Hələ qeyd yoxdur</p>
+      )}
+      <textarea
+        value={newNoteBody}
+        onChange={(e) => onNewNoteChange(e.target.value)}
+        placeholder="Yeni qeyd (admin təlimatı)..."
+        rows={3}
+        className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+      />
+      <p className="mt-1 text-xs text-slate-400">
+        Saxlayanda yeni qeyd əlavə olunur; köhnə qeydlər silinmir.
+      </p>
     </div>
   );
 }
