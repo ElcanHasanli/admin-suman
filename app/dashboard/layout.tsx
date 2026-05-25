@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { PushNotificationsSetup } from '@/components/notifications/PushNotificationsSetup';
+import { unregisterPushNotifications } from '@/lib/push';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, logout } = useAuth();
@@ -29,9 +31,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const handleLogout = () => {
+    void unregisterPushNotifications();
     logout();
     router.push('/login');
   };
 
-  return <DashboardShell onLogout={handleLogout}>{children}</DashboardShell>;
+  return (
+    <DashboardShell onLogout={handleLogout}>
+      <PushNotificationsSetup />
+      {children}
+    </DashboardShell>
+  );
 }

@@ -15,27 +15,52 @@ export default function DashboardPage() {
     revenue: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [historyWarning, setHistoryWarning] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      try {
-        const [customers, orders, history] = await Promise.all([
-          getCustomers(),
-          getOrders(),
-          getHistory('today'),
-        ]);
+      setLoading(true);
+      setHistoryWarning(null);
 
-        setStats({
-          customers: customers.length,
-          orders: orders.length,
-          todayCompleted: history.summary.totalOrders,
-          revenue: getNetRevenue(history.summary),
-        });
-      } catch {
-        /* keep zeros */
-      } finally {
-        setLoading(false);
+      const next = {
+        customers: 0,
+        orders: 0,
+        todayCompleted: 0,
+        revenue: 0,
+      };
+
+      const [customersRes, ordersRes, historyRes] = await Promise.allSettled([
+        getCustomers(),
+        getOrders(),
+        getHistory('today'),
+      ]);
+
+      if (customersRes.status === 'fulfilled') {
+        next.customers = customersRes.value.length;
       }
+
+      if (ordersRes.status === 'fulfilled') {
+        next.orders = ordersRes.value.length;
+      }
+
+      if (historyRes.status === 'fulfilled') {
+        next.todayCompleted = historyRes.value.summary?.totalOrders ?? 0;
+        next.revenue = getNetRevenue(historyRes.value.summary);
+      } else {
+        const err = historyRes.reason;
+        const msg =
+          err instanceof Error ? err.message : 'Tarixçə statistikası yüklənə bilmədi';
+        if (msg.toLowerCase().includes('debt_payments')) {
+          setHistoryWarning(
+            'Tarixçə: backend V2 migrasiya lazımdır (serverdə npm run db:migrate:v2). Müştəri və sifariş sayları normal göstərilir.'
+          );
+        } else {
+          setHistoryWarning(`Tarixçə: ${msg}`);
+        }
+      }
+
+      setStats(next);
+      setLoading(false);
     };
     load();
   }, []);
@@ -46,6 +71,13 @@ export default function DashboardPage() {
         title="İdarə Paneli"
         description="SuMan admin panelinə xoş gəldiniz"
       />
+
+      {historyWarning && (
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+          {historyWarning}
+        </p>
+      )}
+
       <StatsGrid loading={loading} stats={stats} />
     </div>
   );

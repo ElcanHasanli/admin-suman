@@ -12,7 +12,13 @@ import {
   XCircle,
   Wallet,
 } from 'lucide-react';
-import { exportHistoryExcel, getHistory, markOrderPaid } from '@/lib/api';
+import {
+  exportHistoryExcel,
+  getHistory,
+  getMigrationErrorHint,
+  isBackendMigrationError,
+  markOrderPaid,
+} from '@/lib/api';
 import type { DateRangePreset, DebtPayment, Expense, HistorySummary, Order } from '@/lib/types';
 import {
   downloadBlob,
@@ -68,8 +74,15 @@ export function HistoryView() {
       setSummary(data.summary);
       setExpenses(data.expenses ?? []);
       setDebtPayments(data.debtPayments ?? []);
-    } catch {
-      setToast({ message: 'Tarixçə yüklənə bilmədi', type: 'error' });
+    } catch (err) {
+      setToast({
+        message: isBackendMigrationError(err)
+          ? getMigrationErrorHint()
+          : err instanceof Error
+            ? err.message
+            : 'Tarixçə yüklənə bilmədi',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }

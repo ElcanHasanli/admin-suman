@@ -115,6 +115,23 @@ Eyni qovluqda: **Assets.xcassets → Splash** — `splash-*.png` fayllarını ö
 
 ---
 
+## Push bildirişləri (admin)
+
+Kuryer əməliyyatlarında admin **Android + iOS** cihazlarına bildiriş.
+
+- Hər cihaz ayrı `register`: `platform: "android"` | `"ios"`, `app: "admin"`
+- Login → avtomatik; logout → `unregister`
+- Tam təlimat: **`docs/PUSH-ADMIN.md`**
+- Backend (deploy): **`docs/BACKEND_PUSH.md`**
+
+Firebase: `az.khamsacraft.suman.admin` (Android `google-services.json`, iOS `GoogleService-Info.plist`).
+
+```bash
+npm run cap:sync
+```
+
+---
+
 ## Android (APK)
 
 ```bash
