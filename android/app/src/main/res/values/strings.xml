@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SuMan Admin</string>
+    <string name="title_activity_main">SuMan Admin</string>
+    <string name="package_name">az.khamsacraft.suman.admin</string>
+    <string name="custom_url_scheme">az.khamsacraft.suman.admin</string>
+</resources>

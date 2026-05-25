@@ -1,9 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import {
-  PushNotifications,
-  type PushNotificationSchema,
-  type ActionPerformed,
-} from '@capacitor/push-notifications';
+import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { registerDeviceToken, unregisterDeviceToken } from '@/lib/api';
 
 const STORAGE_KEY = 'admin_fcm_token';
@@ -13,6 +9,10 @@ let listenersAttached = false;
 
 export type PushScreen = 'dashboard' | 'orders' | 'history' | 'customers';
 export type PushPlatform = 'android' | 'ios';
+
+export type PushInitResult =
+  | { ok: true; token: string; platform: PushPlatform }
+  | { ok: false; reason: string };
 
 export function isNativeApp(): boolean {
   return Capacitor.isNativePlatform();
@@ -48,10 +48,14 @@ export function getPathForPushScreen(screen: PushScreen): string {
   }
 }
 
-export function getPathFromNotification(
-  notification: PushNotificationSchema | ActionPerformed['notification']
-): string {
-  return getPathForPushScreen(screenFromData(notification.data as Record<string, string>));
+function getPathFromNotificationData(data?: Record<string, unknown>): string {
+  const normalized: Record<string, string> = {};
+  if (data) {
+    for (const [k, v] of Object.entries(data)) {
+      normalized[k] = String(v);
+    }
+  }
+  return getPathForPushScreen(screenFromData(normalized));
 }
 
 async function persistAndRegister(token: string, platform: PushPlatform) {
@@ -62,75 +66,94 @@ async function persistAndRegister(token: string, platform: PushPlatform) {
   await registerDeviceToken(token, platform);
 }
 
-async function onRegistration(token: string) {
-  const platform = getNativePushPlatform();
-  if (!platform) return;
-  try {
-    await persistAndRegister(token, platform);
-  } catch {
-    /* Backend hazır deyilsə və ya şəbəkə — növbəti açılışda yenidən cəhd */
-  }
-}
-
 async function attachListeners(onNavigate: (path: string) => void) {
   if (listenersAttached) return;
   listenersAttached = true;
 
-  await PushNotifications.addListener('registration', (ev) => {
-    void onRegistration(ev.value);
+  await FirebaseMessaging.addListener('tokenReceived', (event) => {
+    const platform = getNativePushPlatform();
+    if (!platform || !event.token) return;
+    void persistAndRegister(event.token, platform);
   });
 
-  await PushNotifications.addListener('registrationError', () => {
-    /* Firebase / APNs konfiqurasiya yoxdursa */
-  });
-
-  await PushNotifications.addListener('pushNotificationReceived', () => {
-    /* Foreground: OS banner */
-  });
-
-  await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-    onNavigate(getPathFromNotification(action.notification));
+  await FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
+    const data = event.notification?.data as Record<string, unknown> | undefined;
+    onNavigate(getPathFromNotificationData(data));
   });
 }
 
-/** Login sonrası dashboard-da — hər cihaz (android/ios) öz tokenini göndərir */
-export async function initPushNotifications(onNavigate: (path: string) => void): Promise<void> {
-  if (!isNativeApp() || !getNativePushPlatform()) return;
-
-  await attachListeners(onNavigate);
-
-  let perm = await PushNotifications.checkPermissions();
-  if (perm.receive === 'prompt') {
-    perm = await PushNotifications.requestPermissions();
+/** Login sonrası — FCM token (Android + iOS eyni format) */
+export async function initPushNotifications(
+  onNavigate: (path: string) => void
+): Promise<PushInitResult> {
+  if (!isNativeApp()) {
+    return { ok: false, reason: 'Push yalnız mobil APK/iOS-da işləyir (brauzerdə yox)' };
   }
-  if (perm.receive !== 'granted') return;
 
-  await PushNotifications.register();
+  const platform = getNativePushPlatform();
+  if (!platform) {
+    return { ok: false, reason: 'Platform dəstəklənmir' };
+  }
+
+  try {
+    await attachListeners(onNavigate);
+
+    let perm = await FirebaseMessaging.checkPermissions();
+    if (perm.receive === 'prompt' || perm.receive === 'denied') {
+      perm = await FirebaseMessaging.requestPermissions();
+    }
+    if (perm.receive !== 'granted') {
+      return { ok: false, reason: 'Bildiriş icazəsi verilməyib (Telefon Ayarları)' };
+    }
+
+    const { token } = await FirebaseMessaging.getToken();
+    if (!token) {
+      return {
+        ok: false,
+        reason:
+          'FCM token alınmadı. Firebase faylları (google-services.json / GoogleService-Info.plist) yoxdur?',
+      };
+    }
+
+    await persistAndRegister(token, platform);
+    return { ok: true, token, platform };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/google-services|GoogleService|Firebase|plist|not found/i.test(msg)) {
+      return {
+        ok: false,
+        reason: 'Firebase konfiqurasiya yoxdur — firebase/README.md oxuyun',
+      };
+    }
+    return { ok: false, reason: msg || 'Push quraşdırılmadı' };
+  }
 }
 
 export async function unregisterPushNotifications(): Promise<void> {
   const token =
     lastToken ||
     (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null);
-  if (!token) return;
 
-  try {
-    await unregisterDeviceToken(token);
-  } catch {
-    /* ignore */
+  if (isNativeApp()) {
+    try {
+      await FirebaseMessaging.deleteToken();
+      await FirebaseMessaging.removeAllListeners();
+    } catch {
+      /* ignore */
+    }
+    listenersAttached = false;
+  }
+
+  if (token) {
+    try {
+      await unregisterDeviceToken(token);
+    } catch {
+      /* ignore */
+    }
   }
 
   lastToken = null;
   if (typeof window !== 'undefined') {
     localStorage.removeItem(STORAGE_KEY);
-  }
-
-  if (isNativeApp()) {
-    try {
-      await PushNotifications.removeAllListeners();
-    } catch {
-      /* ignore */
-    }
-    listenersAttached = false;
   }
 }

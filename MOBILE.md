@@ -124,11 +124,24 @@ Kuryer əməliyyatlarında admin **Android + iOS** cihazlarına bildiriş.
 - Tam təlimat: **`docs/PUSH-ADMIN.md`**
 - Backend (deploy): **`docs/BACKEND_PUSH.md`**
 
-Firebase: `az.khamsacraft.suman.admin` (Android `google-services.json`, iOS `GoogleService-Info.plist`).
+**Vacib:** Layihədə Firebase faylları yoxdursa push **heç vaxt** işləməz. Addım-addım: **`firebase/README.md`**
+
+| Fayl | Yol |
+|------|-----|
+| `google-services.json` | `android/app/google-services.json` |
+| `GoogleService-Info.plist` | `ios/App/App/GoogleService-Info.plist` |
+
+Firebase Console → Cloud Messaging → iOS üçün **APNs Key (.p8)** yüklənməlidir.
+
+Login sonrası toast: **«Push aktiv (ios|android)»** — yoxdursa səbəb ekranda yazılır (icazə, Firebase, server).
 
 ```bash
 npm run cap:sync
+cd ios/App && pod install   # macOS
 ```
+
+Xcode: **Signing & Capabilities** → **Push Notifications**. Real telefon (simulyator etibarlı deyil).
+TestFlight/App Store üçün `ios/App/App/App.entitlements` içində `aps-environment` → `production`.
 
 ---
 

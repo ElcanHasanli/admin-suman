@@ -12,9 +12,11 @@ const config: CapacitorConfig = {
     androidScheme: "https",
   },
   plugins: {
-    // Native HTTP — WebView CORS blokunu aradan qaldırır (APK/iOS login)
     CapacitorHttp: {
       enabled: true,
+    },
+    FirebaseMessaging: {
+      presentationOptions: ["badge", "sound", "alert"],
     },
   },
 };
