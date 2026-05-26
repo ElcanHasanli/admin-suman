@@ -1,0 +1,10 @@
+{
+  "plugins": {
+    "extConfig": {},
+    "CapacitorUpdater": {
+      "appId": "az.khamsacraft.suman.admin",
+      "version": "0.0.0",
+      "autoUpdate": "atBackground"
+    }
+  }
+}
