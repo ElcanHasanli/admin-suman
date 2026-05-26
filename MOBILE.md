@@ -1,6 +1,70 @@
-# SuMan Admin — iOS (Capacitor + Xcode)
+# SuMan Admin — Mobil (Capacitor)
 
-Admin panel Next.js tətbiqi **Capacitor** ilə iOS native qabığına qoyulur. API production-da qalır: `https://api.suman.khamsacraft.az/api`
+Admin panel Next.js tətbiqi **Capacitor** ilə iOS və Android native qabığına qoyulur. API production-da qalır: `https://api.suman.khamsacraft.az/api`
+
+| Platform | Açmaq | APK / IPA |
+|----------|--------|-----------|
+| **Android** | `npm run android` | `npm run android:apk` |
+| **iOS** | `npm run ios` | Xcode → Archive |
+
+**OTA (JS/UI avtomatik yeniləmə):** [`docs/CAPGO_OTA.md`](docs/CAPGO_OTA.md) — `npm run ota:upload`
+
+---
+
+## Android (APK)
+
+### Tələblər
+
+- **Android Studio** (SDK + Build Tools) və ya yalnız **JDK 17** + `ANDROID_HOME`
+- Layihədə `android/local.properties` → `sdk.dir=...` (Android Studio bir dəfə açanda yaranır)
+
+### Firebase (push üçün — vacib)
+
+`android/app/google-services.json` faylını Firebase Console-dan endirin (package: `az.khamsacraft.suman.admin`).  
+Təlimat: **`firebase/README.md`**
+
+Fayl olmadan APK qurulur, amma **push işləməz**.
+
+### APK build (terminal)
+
+```bash
+cd admin-suman
+npm run android:apk
+```
+
+Hazır fayl:
+
+```
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Telefona köçürüb quraşdırın (naməlum mənbələr icazəsi).
+
+### Android Studio ilə
+
+```bash
+npm run android
+```
+
+**Build → Build Bundle(s) / APK(s) → Build APK(s)**.
+
+Kod dəyişəndən sonra həmişə `npm run cap:sync` və ya `npm run android:apk`.
+
+### Push (Android)
+
+Kod tərəfi hazırdır: `@capacitor-firebase/messaging`, `POST_NOTIFICATIONS`, login-də token qeydiyyatı.
+
+| Addım | Status |
+|-------|--------|
+| Plugin + `lib/push.ts` | Hazır |
+| `google-services.json` | **Siz əlavə etməlisiniz** |
+| Backend `device_tokens` + FCM | Server: `npm run db:migrate:devices` |
+
+Login sonrası toast: **«Push aktiv (android)»** — yoxdursa səbəb ekranda yazılır.
+
+---
+
+## iOS (Xcode)
 
 ## Tələblər
 
@@ -135,6 +199,10 @@ Firebase Console → Cloud Messaging → iOS üçün **APNs Key (.p8)** yüklən
 
 Login sonrası toast: **«Push aktiv (ios|android)»** — yoxdursa səbəb ekranda yazılır (icazə, Firebase, server).
 
+### Excel export (mobil)
+
+Brauzerdə fayl avtomatik endirilir. APK/iOS-da **paylaşım pəncərəsi** açılır — «Fayllara saxla», Google Drive, Gmail və ya Excel tətbiqini seçin.
+
 ```bash
 npm run cap:sync
 cd ios/App && pod install   # macOS
@@ -144,17 +212,6 @@ Xcode: **Signing & Capabilities** → **Push Notifications**. Real telefon (simu
 TestFlight/App Store üçün `ios/App/App/App.entitlements` içində `aps-environment` → `production`.
 
 ---
-
-## Android (APK)
-
-```bash
-npm install @capacitor/android
-npx cap add android
-npm run cap:sync
-npx cap open android
-```
-
-Android Studio-da **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
 
 ### APK-da "Load failed" / login işləmir
 

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "307299814710",
+    "project_id": "suman-e3006",
+    "storage_bucket": "suman-e3006.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:307299814710:android:ee6cff6f083bf7740ff797",
+        "android_client_info": {
+          "package_name": "az.khamsacraft.suman.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_xRQqekz9wqBJgquiJ2myN_-PsJR_o34"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:307299814710:android:d23e648088a1e1650ff797",
+        "android_client_info": {
+          "package_name": "az.khamsacraft.suman.courier"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_xRQqekz9wqBJgquiJ2myN_-PsJR_o34"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

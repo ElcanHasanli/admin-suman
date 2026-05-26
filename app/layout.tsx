@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/context/AuthContext';
+import { CapgoUpdater } from '@/components/CapgoUpdater';
 import './globals.css';
 
 const inter = Inter({
@@ -27,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="az">
       <body className={`${inter.variable} antialiased`}>
+        <CapgoUpdater />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

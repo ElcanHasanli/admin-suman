@@ -11,10 +11,10 @@ import {
   updateCustomer,
 } from '@/lib/api';
 import type { Customer } from '@/lib/types';
+import { downloadBlob, getExportSuccessMessage } from '@/lib/download';
 import {
   buildCustomerPayload,
   customerToFormFields,
-  downloadBlob,
   formatCurrency,
   formatCustomerPhones,
   getCustomerActiveBidons,
@@ -104,8 +104,8 @@ export function CustomersView() {
   const handleExport = async () => {
     try {
       const blob = await exportCustomersExcel();
-      downloadBlob(blob, `musteriler_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      showToast('Excel faylı yükləndi', 'success');
+      await downloadBlob(blob, `musteriler_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      showToast(getExportSuccessMessage(), 'success');
     } catch {
       showToast('Export uğursuz oldu', 'error');
     }

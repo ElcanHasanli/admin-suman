@@ -22,6 +22,9 @@ import {
 import type { DateRangePreset, DebtPayment, Expense, HistorySummary, Order } from '@/lib/types';
 import {
   downloadBlob,
+  getExportSuccessMessage,
+} from '@/lib/download';
+import {
   formatCurrency,
   formatDateTime,
   getDateRange,
@@ -108,8 +111,8 @@ export function HistoryView() {
         preset === 'custom' ? dateFrom : undefined,
         preset === 'custom' ? dateTo : undefined
       );
-      downloadBlob(blob, `tarixce_${dateFrom}_${dateTo}.xlsx`);
-      setToast({ message: 'Excel faylı yükləndi', type: 'success' });
+      await downloadBlob(blob, `tarixce_${dateFrom}_${dateTo}.xlsx`);
+      setToast({ message: getExportSuccessMessage(), type: 'success' });
     } catch {
       setToast({ message: 'Export uğursuz oldu', type: 'error' });
     }
