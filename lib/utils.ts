@@ -1,4 +1,11 @@
-import type { Customer, CustomerPayload, HistorySummary, Order, OrderNote } from './types';
+import type {
+  Customer,
+  CustomerPayload,
+  DateRangePreset,
+  HistorySummary,
+  Order,
+  OrderNote,
+} from './types';
 
 export function formatCurrency(amount: number | string | undefined): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount ?? 0;
@@ -260,9 +267,17 @@ export function isDateInRange(dateStr: string | undefined, from: string, to: str
   return normalized >= from && normalized <= to;
 }
 
+/** YYYY-MM-DD — cihazın yerli tarixi (toISOString UTC səhvi olmur) */
+export function formatLocalDate(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function getDateRange(preset: 'today' | 'week' | 'month'): { from: string; to: string } {
   const now = new Date();
-  const to = now.toISOString().split('T')[0];
+  const to = formatLocalDate(now);
 
   if (preset === 'today') {
     return { from: to, to };
@@ -270,12 +285,27 @@ export function getDateRange(preset: 'today' | 'week' | 'month'): { from: string
 
   if (preset === 'week') {
     const start = new Date(now);
-    start.setDate(now.getDate() - now.getDay() + 1);
-    return { from: start.toISOString().split('T')[0], to };
+    const dow = now.getDay();
+    const daysFromMonday = dow === 0 ? 6 : dow - 1;
+    start.setDate(now.getDate() - daysFromMonday);
+    return { from: formatLocalDate(start), to };
   }
 
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  return { from: start.toISOString().split('T')[0], to };
+  return { from: formatLocalDate(start), to };
+}
+
+/** API-yə həmişə yerli tarix aralığı göndər (server UTC «bu gün» səhvi olmasın) */
+export function resolveHistoryDateParams(
+  preset: DateRangePreset,
+  dateFrom: string,
+  dateTo: string
+): { period: 'custom'; startDate: string; endDate: string } {
+  if (preset === 'custom' && dateFrom && dateTo) {
+    return { period: 'custom', startDate: dateFrom, endDate: dateTo };
+  }
+  const range = getDateRange(preset === 'custom' ? 'today' : preset);
+  return { period: 'custom', startDate: range.from, endDate: range.to };
 }
 
 export function getOrderStatusLabel(status?: string): string {

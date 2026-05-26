@@ -22,12 +22,14 @@ import {
 import type { DateRangePreset, DebtPayment, Expense, HistorySummary, Order } from '@/lib/types';
 import {
   downloadBlob,
+  getExportErrorMessage,
   getExportSuccessMessage,
 } from '@/lib/download';
 import {
   formatCurrency,
   formatDateTime,
   getDateRange,
+  resolveHistoryDateParams,
   getDebtCollected,
   getNetRevenue,
   getOrderBidonCount,
@@ -67,12 +69,12 @@ export function HistoryView() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const period = preset === 'custom' ? 'custom' : preset;
-      const data = await getHistory(
-        period,
-        preset === 'custom' ? dateFrom : undefined,
-        preset === 'custom' ? dateTo : undefined
+      const { period, startDate, endDate } = resolveHistoryDateParams(
+        preset,
+        dateFrom,
+        dateTo
       );
+      const data = await getHistory(period, startDate, endDate);
       setOrders(data.orders);
       setSummary(data.summary);
       setExpenses(data.expenses ?? []);
@@ -105,16 +107,16 @@ export function HistoryView() {
 
   const handleExport = async () => {
     try {
-      const period = preset === 'custom' ? 'custom' : preset;
-      const blob = await exportHistoryExcel(
-        period,
-        preset === 'custom' ? dateFrom : undefined,
-        preset === 'custom' ? dateTo : undefined
+      const { period, startDate, endDate } = resolveHistoryDateParams(
+        preset,
+        dateFrom,
+        dateTo
       );
-      await downloadBlob(blob, `tarixce_${dateFrom}_${dateTo}.xlsx`);
+      const blob = await exportHistoryExcel(period, startDate, endDate);
+      await downloadBlob(blob, `tarixce_${startDate}_${endDate}.xlsx`);
       setToast({ message: getExportSuccessMessage(), type: 'success' });
-    } catch {
-      setToast({ message: 'Export uğursuz oldu', type: 'error' });
+    } catch (err) {
+      setToast({ message: getExportErrorMessage(err), type: 'error' });
     }
   };
 

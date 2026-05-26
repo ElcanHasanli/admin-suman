@@ -43,6 +43,11 @@ body {
   padding-top: max(0.75rem, env(safe-area-inset-top));
 }
 
+/* DashboardShell: alt tab bar — body safe-area ikiqat olmasın */
+body:has([data-bottom-nav]) {
+  padding-bottom: 0;
+}
+
 @media (max-width: 1023px) {
   input,
   select,

@@ -7,8 +7,6 @@ Admin panel Next.js tətbiqi **Capacitor** ilə iOS və Android native qabığı
 | **Android** | `npm run android` | `npm run android:apk` |
 | **iOS** | `npm run ios` | Xcode → Archive |
 
-**OTA (JS/UI avtomatik yeniləmə):** [`docs/CAPGO_OTA.md`](docs/CAPGO_OTA.md) — `npm run ota:upload`
-
 ---
 
 ## Android (APK)
@@ -201,7 +199,17 @@ Login sonrası toast: **«Push aktiv (ios|android)»** — yoxdursa səbəb ekra
 
 ### Excel export (mobil)
 
-Brauzerdə fayl avtomatik endirilir. APK/iOS-da **paylaşım pəncərəsi** açılır — «Fayllara saxla», Google Drive, Gmail və ya Excel tətbiqini seçin.
+Brauzerdə fayl avtomatik endirilir. APK/iOS-da **paylaşım pəncərəsi** açılır.
+
+`Filesystem plugin is not implemented on ios` görsəniz:
+
+```bash
+npm run cap:sync
+cd ios/App && pod install
+npm run ios
+```
+
+Xcode-da **Product → Clean Build Folder**, sonra telefona yenidən Run.
 
 ```bash
 npm run cap:sync

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Users, Package, CheckCircle, TrendingUp } from 'lucide-react';
 import { getCustomers, getHistory, getOrders } from '@/lib/api';
-import { formatCurrency, getNetRevenue } from '@/lib/utils';
+import { formatCurrency, getDateRange, getNetRevenue } from '@/lib/utils';
 import { StatCard } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 
@@ -29,10 +29,11 @@ export default function DashboardPage() {
         revenue: 0,
       };
 
+      const todayRange = getDateRange('today');
       const [customersRes, ordersRes, historyRes] = await Promise.allSettled([
         getCustomers(),
         getOrders(),
-        getHistory('today'),
+        getHistory('custom', todayRange.from, todayRange.to),
       ]);
 
       if (customersRes.status === 'fulfilled') {

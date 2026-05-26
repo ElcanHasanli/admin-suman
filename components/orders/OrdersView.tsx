@@ -90,7 +90,8 @@ export function OrdersView() {
     try {
       let ordersData: Order[];
       if (filter === 'today_completed') {
-        ordersData = await getOrders({ completedToday: true });
+        const { from, to } = getDateRange('today');
+        ordersData = await getCompletedOrders('custom', from, to);
       } else if (filter === 'range' && dateFrom && dateTo) {
         ordersData = await getCompletedOrders('custom', dateFrom, dateTo);
       } else {

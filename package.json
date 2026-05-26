@@ -14,10 +14,7 @@
     "ios": "npm run cap:ios",
     "android": "npm run cap:android",
     "android:apk": "npm run cap:sync && cd android && ./gradlew assembleDebug",
-    "android:apk:release": "npm run cap:sync && cd android && ./gradlew assembleRelease",
-    "ota:upload": "npm run build:mobile && npx @capgo/cli@latest bundle upload --channel=production",
-    "ota:upload:staging": "npm run build:mobile && npx @capgo/cli@latest bundle upload --channel=staging",
-    "ota:debug": "npx @capgo/cli@latest app debug"
+    "android:apk:release": "npm run cap:sync && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^6.3.1",
@@ -26,7 +23,6 @@
     "@capacitor/filesystem": "^6.0.4",
     "@capacitor/ios": "^6.2.0",
     "@capacitor/share": "^6.0.4",
-    "@capgo/capacitor-updater": "^6.45.10",
     "firebase": "^10.14.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",

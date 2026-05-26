@@ -11,7 +11,11 @@ import {
   updateCustomer,
 } from '@/lib/api';
 import type { Customer } from '@/lib/types';
-import { downloadBlob, getExportSuccessMessage } from '@/lib/download';
+import {
+  downloadBlob,
+  getExportErrorMessage,
+  getExportSuccessMessage,
+} from '@/lib/download';
 import {
   buildCustomerPayload,
   customerToFormFields,
@@ -19,6 +23,7 @@ import {
   formatCustomerPhones,
   getCustomerActiveBidons,
   getCustomerDebt,
+  formatLocalDate,
   getCustomerName,
   getCustomerPhone,
   getCustomerPhone2,
@@ -104,10 +109,10 @@ export function CustomersView() {
   const handleExport = async () => {
     try {
       const blob = await exportCustomersExcel();
-      await downloadBlob(blob, `musteriler_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      await downloadBlob(blob, `musteriler_${formatLocalDate()}.xlsx`);
       showToast(getExportSuccessMessage(), 'success');
-    } catch {
-      showToast('Export uğursuz oldu', 'error');
+    } catch (err) {
+      showToast(getExportErrorMessage(err), 'error');
     }
   };
 

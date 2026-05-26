@@ -164,9 +164,25 @@ async function requestBlob(path: string): Promise<Blob> {
     throwIfNetworkFailure(error);
   }
   if (!res.ok) {
-    throw new ApiError('Export uğursuz oldu', res.status);
+    let message = `Export uğursuz oldu (${res.status})`;
+    try {
+      const data = (await res.json()) as { error?: string; message?: string };
+      message = data?.error || data?.message || message;
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) message = text.slice(0, 200);
+      } catch {
+        /* ignore */
+      }
+    }
+    throw new ApiError(message, res.status);
   }
-  return res.blob();
+  const blob = await res.blob();
+  if (blob.size === 0) {
+    throw new ApiError('Server boş fayl qaytardı', res.status);
+  }
+  return blob;
 }
 
 /** Hər cihaz öz platforması ilə (UNIQUE user_id + platform + app) */
