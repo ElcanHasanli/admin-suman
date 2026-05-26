@@ -2,9 +2,13 @@ PODS:
   - Capacitor (6.2.1):
     - CapacitorCordova
   - CapacitorCordova (6.2.1)
+  - CapacitorFilesystem (6.0.4):
+    - Capacitor
   - CapacitorFirebaseMessaging (6.3.1):
     - Capacitor
     - FirebaseMessaging (~> 11.0)
+  - CapacitorShare (6.0.4):
+    - Capacitor
   - FirebaseCore (11.15.0):
     - FirebaseCoreInternal (~> 11.15.0)
     - GoogleUtilities/Environment (~> 8.1)
@@ -62,7 +66,9 @@ PODS:
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorFilesystem (from `../../node_modules/@capacitor/filesystem`)"
   - "CapacitorFirebaseMessaging (from `../../node_modules/@capacitor-firebase/messaging`)"
+  - "CapacitorShare (from `../../node_modules/@capacitor/share`)"
 
 SPEC REPOS:
   trunk:
@@ -80,13 +86,19 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/ios"
   CapacitorCordova:
     :path: "../../node_modules/@capacitor/ios"
+  CapacitorFilesystem:
+    :path: "../../node_modules/@capacitor/filesystem"
   CapacitorFirebaseMessaging:
     :path: "../../node_modules/@capacitor-firebase/messaging"
+  CapacitorShare:
+    :path: "../../node_modules/@capacitor/share"
 
 SPEC CHECKSUMS:
   Capacitor: c95400d761e376be9da6be5a05f226c0e865cebf
   CapacitorCordova: 8d93e14982f440181be7304aa9559ca631d77fff
+  CapacitorFilesystem: 5b9aec35c0212bd0064e26d278c93e925864f212
   CapacitorFirebaseMessaging: 05bf93285c8ae5aeaaddaa938ba1db4fda7305ad
+  CapacitorShare: 77ff779e3b7c6ae9fb5461e52cf7ef805d429491
   FirebaseCore: efb3893e5b94f32b86e331e3bd6dadf18b66568e
   FirebaseCoreInternal: 9afa45b1159304c963da48addb78275ef701c6b4
   FirebaseInstallations: 317270fec08a5d418fdbc8429282238cab3ac843
@@ -96,6 +108,6 @@ SPEC CHECKSUMS:
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
 
-PODFILE CHECKSUM: 6e08dda89f446ab30e0869c68c8eafde5f8cf015
+PODFILE CHECKSUM: 1a5a0a20cfc2f7a6a9bb06d73728797a5cd7e433
 
 COCOAPODS: 1.16.2
