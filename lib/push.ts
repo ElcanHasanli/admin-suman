@@ -7,7 +7,7 @@ const STORAGE_KEY = 'admin_fcm_token';
 let lastToken: string | null = null;
 let listenersAttached = false;
 
-export type PushScreen = 'dashboard' | 'orders' | 'history' | 'customers';
+export type PushScreen = 'dashboard' | 'orders' | 'history' | 'customers' | 'warehouse';
 export type PushPlatform = 'android' | 'ios';
 
 export type PushInitResult =
@@ -26,12 +26,13 @@ export function getNativePushPlatform(): PushPlatform | null {
 
 function screenFromData(data?: Record<string, string>): PushScreen {
   const screen = data?.screen?.toLowerCase();
-  if (screen === 'orders' || screen === 'history' || screen === 'customers') {
+  if (screen === 'orders' || screen === 'history' || screen === 'customers' || screen === 'warehouse') {
     return screen;
   }
   const type = data?.type?.toLowerCase();
   if (type === 'order_completed' || type === 'order_note') return 'orders';
   if (type === 'expense_created') return 'history';
+  if (type === 'warehouse_updated') return 'warehouse';
   return 'dashboard';
 }
 
@@ -43,6 +44,8 @@ export function getPathForPushScreen(screen: PushScreen): string {
       return '/dashboard/history';
     case 'customers':
       return '/dashboard/customers';
+    case 'warehouse':
+      return '/dashboard/warehouse';
     default:
       return '/dashboard';
   }

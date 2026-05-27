@@ -5,6 +5,7 @@ import type {
   HistorySummary,
   Order,
   OrderNote,
+  WarehouseUpdate,
 } from './types';
 
 export function formatCurrency(amount: number | string | undefined): string {
@@ -295,7 +296,6 @@ export function getDateRange(preset: 'today' | 'week' | 'month'): { from: string
   return { from: formatLocalDate(start), to };
 }
 
-/** API-yə həmişə yerli tarix aralığı göndər (server UTC «bu gün» səhvi olmasın) */
 export function resolveHistoryDateParams(
   preset: DateRangePreset,
   dateFrom: string,
@@ -306,6 +306,15 @@ export function resolveHistoryDateParams(
   }
   const range = getDateRange(preset === 'custom' ? 'today' : preset);
   return { period: 'custom', startDate: range.from, endDate: range.to };
+}
+
+export function formatWarehouseUpdateSummary(u: WarehouseUpdate): string {
+  const parts: string[] = [];
+  if (u.empty_in) parts.push(`+${u.empty_in} boş`);
+  if (u.full_in) parts.push(`+${u.full_in} dolu`);
+  if (u.full_out) parts.push(`−${u.full_out} dolu`);
+  const tail = `→ anbarda ${u.remaining_full} dolu, ${u.remaining_empty} boş`;
+  return parts.length ? `${parts.join(', ')} ${tail}` : tail;
 }
 
 export function getOrderStatusLabel(status?: string): string {

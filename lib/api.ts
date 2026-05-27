@@ -11,6 +11,10 @@ import type {
   OrderPayload,
   UpdateCustomerResponse,
   User,
+  WarehousePeriod,
+  WarehouseStockPayload,
+  WarehouseSummaryResponse,
+  WarehouseUpdate,
 } from './types';
 
 const PRODUCTION_API = 'https://api.suman.khamsacraft.az/api';
@@ -100,8 +104,20 @@ export function isBackendMigrationError(err: unknown): boolean {
   );
 }
 
-export function getMigrationErrorHint(): string {
-  return 'Backend V2 migrasiya işlədilməyib. Serverdə bir dəfə: npm run db:migrate:v2';
+export function getMigrationErrorHint(err?: unknown): string {
+  const msg =
+    err instanceof ApiError
+      ? (err.message || '').toLowerCase()
+      : err instanceof Error
+        ? err.message.toLowerCase()
+        : '';
+  if (msg.includes('warehouse')) {
+    return 'Anbar migrasiyası: serverdə npm run db:migrate:warehouse && pm2 restart all';
+  }
+  if (msg.includes('device_token')) {
+    return 'Serverdə push migrasiyası: npm run db:migrate:devices && pm2 restart all';
+  }
+  return 'Backend V2 migrasiya işlədilməyib. Serverdə: npm run db:migrate:v2';
 }
 
 async function request<T>(
@@ -393,6 +409,29 @@ export async function exportHistoryExcel(
     params.set('endDate', endDate);
   }
   return requestBlob(`/history/export?${params}`);
+}
+
+export async function getWarehouseSummary(): Promise<WarehouseSummaryResponse> {
+  return request<WarehouseSummaryResponse>('/warehouse/summary');
+}
+
+export async function getWarehouseUpdates(
+  period: WarehousePeriod,
+  courierId?: number
+): Promise<WarehouseUpdate[]> {
+  const params = new URLSearchParams({ period });
+  if (courierId) params.set('courier_id', String(courierId));
+  const data = await request<unknown>(`/warehouse/updates?${params}`);
+  return unwrapList<WarehouseUpdate>(data, ['updates']);
+}
+
+export async function patchWarehouseStock(
+  payload: WarehouseStockPayload
+): Promise<WarehouseSummaryResponse> {
+  return request<WarehouseSummaryResponse>('/warehouse/stock', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 export { ApiError };

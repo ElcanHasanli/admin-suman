@@ -3,6 +3,7 @@ import {
   Users,
   Package,
   History,
+  Warehouse,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -21,6 +22,12 @@ export const dashboardNav: DashboardNavItem[] = [
     shortLabel: 'Panel',
     icon: LayoutDashboard,
     exact: true,
+  },
+  {
+    href: '/dashboard/warehouse',
+    label: 'Anbar',
+    shortLabel: 'Anbar',
+    icon: Warehouse,
   },
   {
     href: '/dashboard/customers',

@@ -145,3 +145,45 @@ export interface HistoryResponse {
 export type DateRangePreset = 'today' | 'week' | 'month' | 'custom';
 
 export type ExpensePeriod = 'today' | 'week' | 'month' | 'custom';
+
+export type WarehousePeriod = 'today' | 'week' | 'month';
+
+export interface WarehouseStock {
+  full_count: number;
+  empty_count: number;
+  updated_at?: string;
+  updated_by_name?: string;
+}
+
+export interface WarehouseCustomersSummary {
+  total_active_bidons: number;
+  customer_count: number;
+}
+
+export interface WarehouseUpdate {
+  id?: number;
+  courier_id?: number;
+  courier_name?: string;
+  empty_in: number;
+  full_in: number;
+  full_out: number;
+  exit_full?: number;
+  previous_full?: number;
+  previous_empty?: number;
+  remaining_full: number;
+  remaining_empty: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface WarehouseSummaryResponse {
+  warehouse: WarehouseStock;
+  customers: WarehouseCustomersSummary;
+  last_update?: WarehouseUpdate | null;
+}
+
+export interface WarehouseStockPayload {
+  full_count: number;
+  empty_count: number;
+  notes?: string;
+}

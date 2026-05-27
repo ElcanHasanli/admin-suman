@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Package, CheckCircle, TrendingUp } from 'lucide-react';
-import { getCustomers, getHistory, getOrders } from '@/lib/api';
+import Link from 'next/link';
+import { Users, Package, CheckCircle, TrendingUp, Droplets } from 'lucide-react';
+import { getCustomers, getHistory, getOrders, getWarehouseSummary } from '@/lib/api';
 import { formatCurrency, getDateRange, getNetRevenue } from '@/lib/utils';
-import { StatCard } from '@/components/ui/Card';
+import { StatCard, Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function DashboardPage() {
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
   const [historyWarning, setHistoryWarning] = useState<string | null>(null);
+  const [warehouse, setWarehouse] = useState<{ full: number; empty: number } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -30,10 +32,11 @@ export default function DashboardPage() {
       };
 
       const todayRange = getDateRange('today');
-      const [customersRes, ordersRes, historyRes] = await Promise.allSettled([
+      const [customersRes, ordersRes, historyRes, warehouseRes] = await Promise.allSettled([
         getCustomers(),
         getOrders(),
         getHistory('custom', todayRange.from, todayRange.to),
+        getWarehouseSummary(),
       ]);
 
       if (customersRes.status === 'fulfilled') {
@@ -60,6 +63,13 @@ export default function DashboardPage() {
         }
       }
 
+      if (warehouseRes.status === 'fulfilled') {
+        setWarehouse({
+          full: warehouseRes.value.warehouse.full_count,
+          empty: warehouseRes.value.warehouse.empty_count,
+        });
+      }
+
       setStats(next);
       setLoading(false);
     };
@@ -80,6 +90,23 @@ export default function DashboardPage() {
       )}
 
       <StatsGrid loading={loading} stats={stats} />
+
+      {warehouse && (
+        <Link href="/dashboard/warehouse">
+          <Card className="flex items-center justify-between gap-4 p-4 transition hover:ring-2 hover:ring-sky-200 sm:p-5">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Su doldurma anbarı</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">
+                {warehouse.full} dolu · {warehouse.empty} boş
+              </p>
+              <p className="mt-1 text-xs text-sky-600">Anbar səhifəsinə keç →</p>
+            </div>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 text-white">
+              <Droplets size={24} />
+            </div>
+          </Card>
+        </Link>
+      )}
     </div>
   );
 }

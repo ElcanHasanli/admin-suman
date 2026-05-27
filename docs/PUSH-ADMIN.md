@@ -58,6 +58,7 @@ DELETE /api/devices/unregister
 | `order_completed` | `orders` | `order_id` |
 | `expense_created` | `history` | `expense_id` |
 | `order_note` | `orders` | `order_id` |
+| `warehouse_updated` | `warehouse` | — |
 
 Kod: `lib/push.ts` → müvafiq `/dashboard/...` səhifəsi.
 
