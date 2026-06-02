@@ -290,22 +290,44 @@ export function getDateRange(preset: 'yesterday' | 'today'): { from: string; to:
   return { from: d, to: d };
 }
 
-export function resolveHistoryDateParams(
+export type ApiPeriod = 'today' | 'yesterday' | 'custom';
+
+/** Backend period: today | yesterday | custom (+ startDate/endDate) — Asia/Baku server tərəfində */
+export function resolveApiPeriodParams(
   preset: DateRangePreset,
   dateFrom: string,
   dateTo: string
-): { period: 'custom'; startDate: string; endDate: string } {
-  if (preset === 'custom' && dateFrom && dateTo) {
+): { period: ApiPeriod; startDate?: string; endDate?: string } {
+  if (preset === 'today') return { period: 'today' };
+  if (preset === 'yesterday') return { period: 'yesterday' };
+  if (dateFrom && dateTo) {
     return { period: 'custom', startDate: dateFrom, endDate: dateTo };
   }
-  const range = getDateRange(preset === 'custom' ? 'today' : preset);
-  return { period: 'custom', startDate: range.from, endDate: range.to };
+  return { period: 'today' };
 }
 
-export function isAdminExpense(expense: { source?: string; category?: string; courier_id?: number | null }): boolean {
+/** @deprecated use resolveApiPeriodParams */
+export const resolveHistoryDateParams = resolveApiPeriodParams;
+
+const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
+  payroll: 'Əmək haqqı / ödənişlər',
+  fuel: 'Yanacaq, nəqliyyat',
+  supplies: 'Materiallar, təchizat',
+  rent: 'İcarə, kommunal',
+  equipment: 'Avadanlıq, təmir',
+  other: 'Digər xərc',
+};
+
+export function getExpenseCategoryLabel(category?: string): string {
+  if (!category) return '—';
+  return EXPENSE_CATEGORY_LABELS[category.toLowerCase()] ?? category;
+}
+
+export function isAdminExpense(expense: { source?: string; courier_id?: number | null }): boolean {
   const src = (expense.source || '').toLowerCase();
-  const cat = (expense.category || '').toLowerCase();
-  return src === 'admin' || cat === 'admin' || expense.courier_id == null;
+  if (src === 'admin') return true;
+  if (src === 'courier') return false;
+  return expense.courier_id == null;
 }
 
 export function getExpenseAuthorLabel(expense: {

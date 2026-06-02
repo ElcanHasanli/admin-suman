@@ -1,54 +1,67 @@
-# Backend — Admin tətbiqi üçün tələblər
+# Admin backend API (frontend uyğunluğu)
 
-Frontend hazırdır; aşağıdakılar backend-də tam işləməlidir.
+Backend deploy: `npm run db:migrate:expense-source` → `pm2 restart all`
 
-## 1. Admin / şirkət xərci (`POST /api/expenses`)
+## 1. Şirkət xərci (kuryer olmadan)
 
-Admin panel **kuryer seçmədən** istənilən şirkət xərcini qeyd edir: əmək haqqı, yanacaq, icarə, materiallar, təmir və s. (yalnız «maaş» deyil).
-
-**Gözlənilən body:**
+```http
+POST /api/expenses
+Authorization: Bearer <admin>
+```
 
 ```json
 {
   "amount": 350,
   "description": "Yanacaq — mart",
-  "category": "fuel", 
+  "category": "fuel",
   "source": "admin"
 }
 ```
 
-Başqa nümunələr: `category`: `payroll`, `rent`, `supplies`, `equipment`, `other`.
+- `courier_id` **lazım deyil** (`source: "admin"`).
+- `category`: `payroll` | `fuel` | `rent` | `supplies` | `equipment` | `other`
+- Cavab: `source: "admin"`, `courier_name: "Admin"` (və ya null)
 
-- `courier_id` **opsional** olmalıdır (`source: "admin"` olduqda).
-- Cavabda: `id`, `amount`, `description`, `category`, `source: "admin"`, `created_at`; `courier_name` boş ola bilər və ya `"Admin"`.
+Kuryer adına xərc: `{ "source": "courier", "courier_id": 5, ... }`
 
-**Tarixçə (`GET /api/history?period=custom&startDate=&endDate=`):**
+**Frontend:** Tarixçə → «Xərc əlavə et» → `createExpense({ source: 'admin', ... })`.
 
-- `summary.totalExpenses` — kuryer + admin (şirkət) xərclərinin cəmi.
-- `summary.netRevenue` — ümumi gəlir − `totalExpenses`.
-- `expenses[]` — hər iki mənbə.
+## 2. Tarixçə
 
-## 2. Anbar yeniləmələri — tarix filtri
+```http
+GET /api/history?period=custom&startDate=2026-03-01&endDate=2026-03-31
+```
 
-`GET /api/warehouse/updates`:
+`period`:
 
-- `period`: `yesterday` | `today` | `custom` (köhnə `week` / `month` əvəzinə).
-- `custom` üçün: `startDate`, `endDate` (YYYY-MM-DD).
+| Dəyər | Məna |
+|--------|------|
+| `today` | Bu gün (Asia/Baku) |
+| `yesterday` | Dünən |
+| `custom` | `startDate`, `endDate` (YYYY-MM-DD, daxil) |
 
-Əgər hələ dəstəklənmirsə, frontend client-side filtr edir; tam dəqiqlik üçün API tərəfdə filtr lazımdır.
+- `summary.totalExpenses` — kuryer + admin xərcləri
+- `summary.netRevenue` — ümumi gəlir − xərclər
+- `expenses[]` — `source`: `courier` \| `admin`
 
-## 3. Tarixçə period
+**Frontend:** `resolveApiPeriodParams()` → `getHistory(period, startDate?, endDate?)`. Dashboard: `getHistory('today')`.
 
-`GET /api/history` və export artıq əsasən `period=custom` + `startDate` / `endDate` istifadə edir. `yesterday` / `today` bir günlük aralıq kimi işləməlidir.
+## 3. Anbar tarixçəsi
 
-## 4. Push (iOS)
+```http
+GET /api/warehouse/updates?period=yesterday|today|custom&startDate=&endDate=
+```
 
-Firebase token qeydiyyatı (`POST /api/devices/register`, `app: admin`) işləməlidir; frontend artıq login zamanı xəta toast göstərmir.
+Eyni period məntiqi (Baku timezone).
 
----
+**Frontend:** Anbar səhifəsi eyni `resolveApiPeriodParams` istifadə edir.
 
-**Yoxlama:**
+## 4. Push
 
-1. Admin login → Tarixçə → «Xərc əlavə et» → məbləğ + təsvir → siyahıda görünür.
-2. Xalis gəlir və ümumi xərclər yenilənir.
-3. Anbar səhifəsində «Dünən» / «Bu gün» / aralıq düzgün siyahı verir.
+```http
+POST /api/devices/register
+```
+
+`platform`: `"ios"` \| `"android"`, `app`: `"admin"`
+
+**Frontend:** `lib/push.ts` — login sonrası səssiz qeydiyyat (toast yoxdur).

@@ -103,14 +103,24 @@ export interface OrderPayload {
   price: number;
 }
 
+export type ExpenseCategory =
+  | 'payroll'
+  | 'fuel'
+  | 'rent'
+  | 'supplies'
+  | 'equipment'
+  | 'other';
+
+export type ExpenseSource = 'admin' | 'courier';
+
 export interface Expense {
   id: number;
   courier_id?: number | null;
   courier_name?: string;
   amount: number | string;
   description: string;
-  category?: string;
-  source?: 'courier' | 'admin' | string;
+  category?: ExpenseCategory | string;
+  source?: ExpenseSource | string;
   created_by?: string;
   created_at: string;
 }
@@ -119,8 +129,8 @@ export interface ExpensePayload {
   courier_id?: number;
   amount: number;
   description: string;
-  category?: string;
-  source?: 'admin';
+  category?: ExpenseCategory | string;
+  source?: ExpenseSource;
 }
 
 export interface HistorySummary {

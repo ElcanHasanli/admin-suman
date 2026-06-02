@@ -30,7 +30,8 @@ import {
 import {
   formatCurrency,
   formatDateTime,
-  resolveHistoryDateParams,
+  resolveApiPeriodParams,
+  getExpenseCategoryLabel,
   getDebtCollected,
   getNetRevenue,
   getOrderBidonCount,
@@ -77,7 +78,7 @@ export function HistoryView() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { period, startDate, endDate } = resolveHistoryDateParams(
+      const { period, startDate, endDate } = resolveApiPeriodParams(
         preset,
         dateFrom,
         dateTo
@@ -107,7 +108,7 @@ export function HistoryView() {
 
   const handleExport = async () => {
     try {
-      const { period, startDate, endDate } = resolveHistoryDateParams(
+      const { period, startDate, endDate } = resolveApiPeriodParams(
         preset,
         dateFrom,
         dateTo
@@ -326,7 +327,7 @@ function ExpensesTable({
                   </td>
                   <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">{e.description}</td>
                   <td className="px-3 py-3 text-slate-500 sm:px-5 sm:py-3.5">
-                    {e.category || '—'}
+                    {getExpenseCategoryLabel(e.category)}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-slate-500 sm:px-5 sm:py-3.5">
                     {formatDateTime(e.created_at)}
@@ -435,7 +436,7 @@ function AddAdminExpenseModal({
           required
         />
         <p className="text-xs text-slate-500">
-          İstənilən şirkət xərci — yalnız maaş deyil. Backend hazır deyilsə, xəta görünə bilər.
+          Şirkət xərci serverdə <code className="text-[11px]">source: admin</code> ilə qeyd olunur.
         </p>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">

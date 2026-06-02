@@ -26,8 +26,7 @@ import type {
 import {
   formatDateTime,
   formatWarehouseUpdateSummary,
-  isDateInRange,
-  resolveHistoryDateParams,
+  resolveApiPeriodParams,
 } from '@/lib/utils';
 import {
   DateRangePresetButtons,
@@ -62,17 +61,13 @@ export function WarehouseView() {
       else setRefreshing(true);
       try {
         const cid = courierId ? Number(courierId) : undefined;
-        const { startDate, endDate } = resolveHistoryDateParams(preset, dateFrom, dateTo);
-        const apiPeriod = preset === 'custom' ? 'custom' : preset;
+        const { period, startDate, endDate } = resolveApiPeriodParams(preset, dateFrom, dateTo);
         const [summaryData, updatesData] = await Promise.all([
           getWarehouseSummary(),
-          getWarehouseUpdates(apiPeriod, cid, startDate, endDate),
+          getWarehouseUpdates(period, cid, startDate, endDate),
         ]);
         setSummary(summaryData);
-        const filtered = updatesData.filter((u) =>
-          isDateInRange(u.created_at, startDate, endDate)
-        );
-        setUpdates(filtered.length > 0 || updatesData.length === 0 ? filtered : updatesData);
+        setUpdates(updatesData);
       } catch (err) {
         setToast({
           message: isBackendMigrationError(err)
