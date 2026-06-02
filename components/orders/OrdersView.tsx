@@ -277,7 +277,7 @@ export function OrdersView() {
     }
   };
 
-  const applyPreset = (preset: 'today' | 'week' | 'month') => {
+  const applyDatePreset = (preset: 'yesterday' | 'today') => {
     const range = getDateRange(preset);
     setDateFrom(range.from);
     setDateTo(range.to);
@@ -324,17 +324,17 @@ export function OrdersView() {
           ))}
           <button
             type="button"
-            onClick={() => applyPreset('today')}
+            onClick={() => applyDatePreset('yesterday')}
             className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
           >
-            Bu gün
+            Dünən
           </button>
           <button
             type="button"
-            onClick={() => applyPreset('week')}
+            onClick={() => applyDatePreset('today')}
             className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
           >
-            Bu həftə
+            Bu gün
           </button>
         </div>
 

@@ -5,12 +5,15 @@ import { usePathname } from 'next/navigation';
 import { LogOut, Droplets } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { dashboardNav, isNavActive } from '@/components/layout/dashboard-nav';
+import { NotificationNavBadge } from '@/components/notifications/NotificationNavBadge';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface SidebarProps {
   onLogout: () => void;
 }
 
 export function Sidebar({ onLogout }: SidebarProps) {
+  const { requestConfirm, ConfirmDialog } = useConfirm();
   const pathname = usePathname();
   const { user } = useAuth();
 
@@ -44,13 +47,16 @@ export function Sidebar({ onLogout }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+              className={`relative flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 active
                   ? 'bg-sky-600 text-white shadow-lg shadow-sky-900/30'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`}
             >
-              <Icon size={18} className="shrink-0" />
+              <span className="relative shrink-0">
+                <Icon size={18} />
+                {item.href === '/dashboard/notifications' && <NotificationNavBadge />}
+              </span>
               {item.label}
             </Link>
           );
@@ -60,13 +66,25 @@ export function Sidebar({ onLogout }: SidebarProps) {
       <div className="border-t border-slate-800 p-4">
         <button
           type="button"
-          onClick={onLogout}
+          onClick={() => {
+            void (async () => {
+              const ok = await requestConfirm({
+                title: 'Hesabdan çıxış',
+                message: 'Çıxmaq istədiyinizə əminsiniz?',
+                confirmLabel: 'Çıxış',
+                cancelLabel: 'Qal',
+                variant: 'danger',
+              });
+              if (ok) onLogout();
+            })();
+          }}
           className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
         >
           <LogOut size={18} />
           Çıxış
         </button>
       </div>
+      {ConfirmDialog}
     </aside>
   );
 }

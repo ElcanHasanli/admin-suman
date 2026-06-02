@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogOut } from 'lucide-react';
 import { dashboardNav, isNavActive } from '@/components/layout/dashboard-nav';
+import { NotificationNavBadge } from '@/components/notifications/NotificationNavBadge';
 
-export function BottomTabBar({ onLogout }: { onLogout: () => void }) {
+export function BottomTabBar() {
   const pathname = usePathname();
 
   return (
@@ -23,17 +23,16 @@ export function BottomTabBar({ onLogout }: { onLogout: () => void }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 transition ${
+              className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 transition ${
                 active
                   ? 'text-sky-600'
                   : 'text-slate-500 active:bg-slate-100'
               }`}
             >
-              <Icon
-                size={22}
-                strokeWidth={active ? 2.5 : 2}
-                className="shrink-0"
-              />
+              <span className="relative shrink-0">
+                <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+                {item.href === '/dashboard/notifications' && <NotificationNavBadge />}
+              </span>
               <span
                 className={`max-w-full truncate text-[10px] font-medium leading-tight ${
                   active ? 'font-semibold' : ''
@@ -44,15 +43,6 @@ export function BottomTabBar({ onLogout }: { onLogout: () => void }) {
             </Link>
           );
         })}
-        <button
-          type="button"
-          onClick={onLogout}
-          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-slate-500 transition active:bg-red-50 active:text-red-600"
-          aria-label="Çıxış"
-        >
-          <LogOut size={22} className="shrink-0" />
-          <span className="text-[10px] font-medium leading-tight">Çıxış</span>
-        </button>
       </div>
     </nav>
   );

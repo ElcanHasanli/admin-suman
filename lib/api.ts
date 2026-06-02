@@ -15,6 +15,7 @@ import type {
   WarehouseStockPayload,
   WarehouseSummaryResponse,
   WarehouseUpdate,
+  AdminNotification,
 } from './types';
 
 const PRODUCTION_API = 'https://api.suman.khamsacraft.az/api';
@@ -294,7 +295,7 @@ export async function getOrders(params?: {
 }
 
 export async function getCompletedOrders(
-  period: 'today' | 'week' | 'month' | 'custom',
+  period: 'today' | 'yesterday' | 'custom',
   startDate?: string,
   endDate?: string
 ): Promise<Order[]> {
@@ -386,7 +387,7 @@ export async function getCouriers(): Promise<Courier[]> {
 }
 
 export async function getHistory(
-  period: 'today' | 'week' | 'month' | 'custom',
+  period: 'today' | 'yesterday' | 'custom',
   startDate?: string,
   endDate?: string
 ): Promise<HistoryResponse> {
@@ -399,7 +400,7 @@ export async function getHistory(
 }
 
 export async function exportHistoryExcel(
-  period: 'today' | 'week' | 'month' | 'custom',
+  period: 'today' | 'yesterday' | 'custom',
   startDate?: string,
   endDate?: string
 ): Promise<Blob> {
@@ -417,10 +418,16 @@ export async function getWarehouseSummary(): Promise<WarehouseSummaryResponse> {
 
 export async function getWarehouseUpdates(
   period: WarehousePeriod,
-  courierId?: number
+  courierId?: number,
+  startDate?: string,
+  endDate?: string
 ): Promise<WarehouseUpdate[]> {
   const params = new URLSearchParams({ period });
   if (courierId) params.set('courier_id', String(courierId));
+  if (period === 'custom' && startDate && endDate) {
+    params.set('startDate', startDate);
+    params.set('endDate', endDate);
+  }
   const data = await request<unknown>(`/warehouse/updates?${params}`);
   return unwrapList<WarehouseUpdate>(data, ['updates']);
 }
@@ -432,6 +439,12 @@ export async function patchWarehouseStock(
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
+}
+
+/** Login və səhifə açılışında backend passiv müştəri yoxlaması işlədə bilər */
+export async function getNotifications(): Promise<AdminNotification[]> {
+  const data = await request<unknown>('/notifications');
+  return unwrapList<AdminNotification>(data, ['notifications']);
 }
 
 export { ApiError };

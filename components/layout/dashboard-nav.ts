@@ -4,6 +4,7 @@ import {
   Package,
   History,
   Warehouse,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -22,6 +23,12 @@ export const dashboardNav: DashboardNavItem[] = [
     shortLabel: 'Panel',
     icon: LayoutDashboard,
     exact: true,
+  },
+  {
+    href: '/dashboard/notifications',
+    label: 'Bildirişlər',
+    shortLabel: 'Bildiriş',
+    icon: Bell,
   },
   {
     href: '/dashboard/warehouse',

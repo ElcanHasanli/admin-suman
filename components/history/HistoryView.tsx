@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Download,
   TrendingUp,
@@ -11,15 +11,17 @@ import {
   CircleDollarSign,
   XCircle,
   Wallet,
+  Plus,
 } from 'lucide-react';
 import {
+  createExpense,
   exportHistoryExcel,
   getHistory,
   getMigrationErrorHint,
   isBackendMigrationError,
   markOrderPaid,
 } from '@/lib/api';
-import type { DateRangePreset, DebtPayment, Expense, HistorySummary, Order } from '@/lib/types';
+import type { DebtPayment, Expense, HistorySummary, Order } from '@/lib/types';
 import {
   downloadBlob,
   getExportErrorMessage,
@@ -28,7 +30,6 @@ import {
 import {
   formatCurrency,
   formatDateTime,
-  getDateRange,
   resolveHistoryDateParams,
   getDebtCollected,
   getNetRevenue,
@@ -46,6 +47,8 @@ import {
   getUnpaidCreditDebt,
   isOrderPaid,
   parseExpenseAmount,
+  getExpenseAuthorLabel,
+  isAdminExpense,
 } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -53,7 +56,12 @@ import { Card, StatCard } from '@/components/ui/Card';
 import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
+import { Modal } from '@/components/ui/Modal';
 import { useConfirm } from '@/components/ui/ConfirmModal';
+import {
+  DateRangePresetButtons,
+  useDateRangeState,
+} from '@/components/ui/DateRangePresets';
 
 export function HistoryView() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -61,10 +69,10 @@ export function HistoryView() {
   const [debtPayments, setDebtPayments] = useState<DebtPayment[]>([]);
   const [summary, setSummary] = useState<HistorySummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [preset, setPreset] = useState<DateRangePreset>('today');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const { preset, setPreset, dateFrom, setDateFrom, dateTo, setDateTo } =
+    useDateRangeState('today');
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,14 +105,6 @@ export function HistoryView() {
     load();
   }, [load]);
 
-  useEffect(() => {
-    if (preset !== 'custom') {
-      const range = getDateRange(preset);
-      setDateFrom(range.from);
-      setDateTo(range.to);
-    }
-  }, [preset]);
-
   const handleExport = async () => {
     try {
       const { period, startDate, endDate } = resolveHistoryDateParams(
@@ -120,13 +120,6 @@ export function HistoryView() {
     }
   };
 
-  const presets: { key: DateRangePreset; label: string }[] = [
-    { key: 'today', label: 'Bu gün' },
-    { key: 'week', label: 'Bu həftə' },
-    { key: 'month', label: 'Bu ay' },
-    { key: 'custom', label: 'Tarix aralığı' },
-  ];
-
   const unpaidCredit = useMemo(
     () => getUnpaidCreditDebt(orders, summary),
     [orders, summary]
@@ -139,26 +132,21 @@ export function HistoryView() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-          {presets.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => setPreset(p.key)}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                preset === p.key
-                  ? 'bg-sky-600 text-white shadow-md'
-                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <DateRangePresetButtons preset={preset} onPresetChange={setPreset} />
+        <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
+          <Button
+            variant="secondary"
+            onClick={() => setExpenseModalOpen(true)}
+            className="w-full sm:w-auto"
+          >
+            <Plus size={16} />
+            Xərc əlavə et
+          </Button>
+          <Button variant="secondary" onClick={handleExport} className="w-full sm:w-auto">
+            <Download size={16} />
+            Excel export
+          </Button>
         </div>
-        <Button variant="secondary" onClick={handleExport} className="w-full sm:ml-auto sm:w-auto">
-          <Download size={16} />
-          Excel export
-        </Button>
       </div>
 
       {preset === 'custom' && (
@@ -204,9 +192,13 @@ export function HistoryView() {
           accent="amber"
         />
         <StatCard
-          title="Kuryer xərcləri"
+          title="Ümumi xərclər"
           value={loading ? '...' : formatCurrency(getTotalExpenses(summary))}
-          subtitle={loading ? undefined : 'Kuryerlər öz hesabından qeyd edir'}
+          subtitle={
+            loading
+              ? undefined
+              : 'Kuryer + şirkət xərcləri — xalis gəlirdən çıxılır'
+          }
           icon={<TrendingDown size={20} />}
           accent="rose"
         />
@@ -246,6 +238,16 @@ export function HistoryView() {
 
       <ExpensesTable loading={loading} expenses={expenses} />
 
+      <AddAdminExpenseModal
+        open={expenseModalOpen}
+        onClose={() => setExpenseModalOpen(false)}
+        onSaved={() => {
+          setExpenseModalOpen(false);
+          load();
+        }}
+        onError={(message) => setToast({ message, type: 'error' })}
+      />
+
       <DebtPaymentsTable loading={loading} payments={debtPayments} />
 
       <Card className="overflow-hidden">
@@ -278,43 +280,54 @@ function ExpensesTable({
     <Card className="overflow-hidden">
       <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
         <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
-          Kuryer xərcləri ({expenses.length})
+          Xərclər ({expenses.length})
         </h3>
         <p className="text-xs text-slate-500 sm:text-sm">
-          Kuryerlər öz panelindən əlavə edir — admin buradan yalnız izləyir
+          Kuryer xərcləri + adminin qeyd etdiyi şirkət xərcləri (yanacaq, icarə, materiallar və s.)
         </p>
       </div>
-      <TableScroll minWidth={520}>
+      <TableScroll minWidth={560}>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Kuryer</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Mənbə</th>
               <th className="px-3 py-2.5 sm:px-5 sm:py-3">Məbləğ</th>
               <th className="px-3 py-2.5 sm:px-5 sm:py-3">Təsvir</th>
+              <th className="px-3 py-2.5 sm:px-5 sm:py-3">Kateqoriya</th>
               <th className="px-3 py-2.5 sm:px-5 sm:py-3">Tarix</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} className="px-3 py-10 text-center text-slate-400">
+                <td colSpan={5} className="px-3 py-10 text-center text-slate-400">
                   Yüklənir...
                 </td>
               </tr>
             ) : expenses.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-3 py-10 text-center text-slate-400">
-                  Bu dövrdə kuryer xərci yoxdur
+                <td colSpan={5} className="px-3 py-10 text-center text-slate-400">
+                  Bu dövrdə xərc yoxdur
                 </td>
               </tr>
             ) : (
               expenses.map((e) => (
-                <tr key={e.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                  <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{e.courier_name}</td>
+                <tr
+                  key={e.id}
+                  className={`border-b border-slate-50 hover:bg-slate-50/50 ${
+                    isAdminExpense(e) ? 'bg-amber-50/40' : ''
+                  }`}
+                >
+                  <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">
+                    {getExpenseAuthorLabel(e)}
+                  </td>
                   <td className="px-3 py-3 font-semibold text-rose-700 sm:px-5 sm:py-3.5">
                     {formatCurrency(parseExpenseAmount(e.amount))}
                   </td>
                   <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">{e.description}</td>
+                  <td className="px-3 py-3 text-slate-500 sm:px-5 sm:py-3.5">
+                    {e.category || '—'}
+                  </td>
                   <td className="whitespace-nowrap px-3 py-3 text-slate-500 sm:px-5 sm:py-3.5">
                     {formatDateTime(e.created_at)}
                   </td>
@@ -325,6 +338,115 @@ function ExpensesTable({
         </table>
       </TableScroll>
     </Card>
+  );
+}
+
+const ADMIN_EXPENSE_CATEGORIES = [
+  { value: 'payroll', label: 'Əmək haqqı / ödənişlər' },
+  { value: 'fuel', label: 'Yanacaq, nəqliyyat' },
+  { value: 'supplies', label: 'Materiallar, təchizat' },
+  { value: 'rent', label: 'İcarə, kommunal' },
+  { value: 'equipment', label: 'Avadanlıq, təmir' },
+  { value: 'other', label: 'Digər xərc' },
+];
+
+function AddAdminExpenseModal({
+  open,
+  onClose,
+  onSaved,
+  onError,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  onError: (message: string) => void;
+}) {
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('other');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setAmount('');
+      setDescription('');
+      setCategory('other');
+    }
+  }, [open]);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const value = parseFloat(amount);
+    if (!value || value <= 0) {
+      onError('Məbləğ düzgün daxil edin');
+      return;
+    }
+    if (!description.trim()) {
+      onError('Təsvir mütləqdir');
+      return;
+    }
+    setSaving(true);
+    try {
+      await createExpense({
+        amount: value,
+        description: description.trim(),
+        category,
+        source: 'admin',
+      });
+      onSaved();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Xərc əlavə edilmədi');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Şirkət xərci əlavə et" size="md">
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+        <Input
+          label="Məbləğ (₼)"
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={amount}
+          onChange={(ev) => setAmount(ev.target.value)}
+          required
+        />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">Kateqoriya</label>
+          <select
+            value={category}
+            onChange={(ev) => setCategory(ev.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          >
+            {ADMIN_EXPENSE_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Input
+          label="Təsvir"
+          value={description}
+          onChange={(ev) => setDescription(ev.target.value)}
+          placeholder="Məs: Ofis icarəsi, yanacaq, kuryer ödənişi..."
+          required
+        />
+        <p className="text-xs text-slate-500">
+          İstənilən şirkət xərci — yalnız maaş deyil. Backend hazır deyilsə, xəta görünə bilər.
+        </p>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
+            Ləğv et
+          </Button>
+          <Button type="submit" loading={saving} className="w-full sm:w-auto">
+            Əlavə et
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, Download, Search } from 'lucide-react';
 import {
   ApiError,
@@ -47,7 +47,11 @@ const emptyForm = {
   debt: '',
 };
 
-export function CustomersView() {
+export function CustomersView({
+  highlightCustomerId = null,
+}: {
+  highlightCustomerId?: number | null;
+}) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -198,10 +202,17 @@ export function CustomersView() {
         onCreate={openCreate}
       />
 
+      {highlightCustomerId != null && !loading && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Bildirişdən keçid: passiv müştəri vurğulanıb (ID {highlightCustomerId})
+        </p>
+      )}
+
       <Card className="overflow-hidden">
         <CustomersTable
           loading={loading}
           customers={filtered}
+          highlightCustomerId={highlightCustomerId}
           onEdit={openEdit}
           onDelete={handleDelete}
         />
@@ -338,14 +349,26 @@ function Toolbar({
 function CustomersTable({
   loading,
   customers,
+  highlightCustomerId,
   onEdit,
   onDelete,
 }: {
   loading: boolean;
   customers: Customer[];
+  highlightCustomerId?: number | null;
   onEdit: (c: Customer) => void;
   onDelete: (id: number, name: string) => void;
 }) {
+  const highlightRef = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    if (loading || highlightCustomerId == null) return;
+    const t = window.setTimeout(() => {
+      highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    return () => window.clearTimeout(t);
+  }, [loading, highlightCustomerId, customers.length]);
+
   return (
     <TableScroll minWidth={760}>
       <table className="w-full text-sm">
@@ -374,8 +397,16 @@ function CustomersTable({
               </td>
             </tr>
           ) : (
-            customers.map((c) => (
-              <tr key={c.id} className="border-b border-slate-50 transition hover:bg-slate-50/50">
+            customers.map((c) => {
+              const highlighted = highlightCustomerId != null && c.id === highlightCustomerId;
+              return (
+              <tr
+                key={c.id}
+                ref={highlighted ? highlightRef : undefined}
+                className={`border-b border-slate-50 transition hover:bg-slate-50/50 ${
+                  highlighted ? 'bg-amber-50 ring-2 ring-inset ring-amber-400' : ''
+                }`}
+              >
                 <td className="px-3 py-3 font-medium text-slate-900 sm:px-5 sm:py-3.5">
                   {getCustomerName(c)}
                 </td>
@@ -413,7 +444,8 @@ function CustomersTable({
                   </div>
                 </td>
               </tr>
-            ))
+            );
+            })
           )}
         </tbody>
       </table>

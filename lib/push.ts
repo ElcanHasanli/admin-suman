@@ -1,6 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { registerDeviceToken, unregisterDeviceToken } from '@/lib/api';
+import { getNotificationTargetPath } from '@/lib/notifications';
+import type { AdminNotification } from '@/lib/types';
 
 const STORAGE_KEY = 'admin_fcm_token';
 
@@ -30,6 +32,7 @@ function screenFromData(data?: Record<string, string>): PushScreen {
     return screen;
   }
   const type = data?.type?.toLowerCase();
+  if (type === 'customer_inactive') return 'customers';
   if (type === 'order_completed' || type === 'order_note') return 'orders';
   if (type === 'expense_created') return 'history';
   if (type === 'warehouse_updated') return 'warehouse';
@@ -58,7 +61,17 @@ function getPathFromNotificationData(data?: Record<string, unknown>): string {
       normalized[k] = String(v);
     }
   }
-  return getPathForPushScreen(screenFromData(normalized));
+  const pseudo = {
+    id: 0,
+    type: normalized.type || '',
+    message: '',
+    created_at: '',
+    screen: normalized.screen,
+    customer_id: normalized.customer_id ? Number(normalized.customer_id) : undefined,
+    last_order_date: normalized.last_order_date,
+    data: normalized,
+  } as AdminNotification;
+  return getNotificationTargetPath(pseudo);
 }
 
 async function persistAndRegister(token: string, platform: PushPlatform) {

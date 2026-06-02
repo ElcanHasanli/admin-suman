@@ -59,8 +59,13 @@ DELETE /api/devices/unregister
 | `expense_created` | `history` | `expense_id` |
 | `order_note` | `orders` | `order_id` |
 | `warehouse_updated` | `warehouse` | — |
+| `customer_inactive` | `customers` | `customer_id`, `last_order_date` |
 
-Kod: `lib/push.ts` → müvafiq `/dashboard/...` səhifəsi.
+Kod: `lib/push.ts` → müvafiq `/dashboard/...` səhifəsi. `customer_inactive` üçün `/dashboard/customers?customer_id=...`.
+
+## In-app (push gəlməyəndə)
+
+iOS/Android-də push çatmırsa: **Bildirişlər** (`/dashboard/notifications`) — `GET /api/notifications`. Ətraflı: `docs/NOTIFICATIONS.md`.
 
 ## Build
 

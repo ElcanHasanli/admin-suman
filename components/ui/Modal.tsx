@@ -16,10 +16,20 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
       document.body.style.overflow = '';
+      window.scrollTo(0, scrollY);
     };
   }, [open, onClose]);
 
@@ -34,7 +44,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
   return (
     <Overlay onClose={onClose}>
       <Panel sizeClass={sizes[size]}>
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
           <h2 className="pr-2 text-base font-semibold text-slate-900 sm:text-lg">{title}</h2>
           <button
             type="button"
@@ -44,7 +54,12 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
             <X size={20} />
           </button>
         </div>
-        <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">{children}</div>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {children}
+        </div>
       </Panel>
     </Overlay>
   );
@@ -55,6 +70,7 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
+      role="presentation"
     >
       {children}
     </div>
@@ -64,8 +80,10 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
 function Panel({ children, sizeClass }: { children: React.ReactNode; sizeClass: string }) {
   return (
     <div
-      className={`w-full max-h-[92vh] overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl ${sizeClass}`}
+      className={`flex max-h-[min(92dvh,92vh)] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[min(90dvh,90vh)] sm:rounded-2xl ${sizeClass}`}
       onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
     >
       {children}
     </div>

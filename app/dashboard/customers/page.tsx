@@ -1,4 +1,5 @@
-import { CustomersView } from '@/components/customers/CustomersView';
+import { Suspense } from 'react';
+import { CustomersPageClient } from '@/app/dashboard/customers/CustomersPageClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function CustomersPage() {
@@ -8,7 +9,9 @@ export default function CustomersPage() {
         title="Müştərilər"
         description="Müştəri siyahısı və idarəetmə"
       />
-      <CustomersView />
+      <Suspense fallback={<p className="py-8 text-center text-slate-500">Yüklənir...</p>}>
+        <CustomersPageClient />
+      </Suspense>
     </div>
   );
 }

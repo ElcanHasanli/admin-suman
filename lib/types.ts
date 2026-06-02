@@ -105,19 +105,22 @@ export interface OrderPayload {
 
 export interface Expense {
   id: number;
-  courier_id?: number;
-  courier_name: string;
+  courier_id?: number | null;
+  courier_name?: string;
   amount: number | string;
   description: string;
   category?: string;
+  source?: 'courier' | 'admin' | string;
+  created_by?: string;
   created_at: string;
 }
 
 export interface ExpensePayload {
-  courier_id: number;
+  courier_id?: number;
   amount: number;
   description: string;
   category?: string;
+  source?: 'admin';
 }
 
 export interface HistorySummary {
@@ -142,11 +145,11 @@ export interface HistoryResponse {
   debtPayments?: DebtPayment[];
 }
 
-export type DateRangePreset = 'today' | 'week' | 'month' | 'custom';
+export type DateRangePreset = 'yesterday' | 'today' | 'custom';
 
-export type ExpensePeriod = 'today' | 'week' | 'month' | 'custom';
+export type ExpensePeriod = 'yesterday' | 'today' | 'custom';
 
-export type WarehousePeriod = 'today' | 'week' | 'month';
+export type WarehousePeriod = 'yesterday' | 'today' | 'custom';
 
 export interface WarehouseStock {
   full_count: number;
@@ -186,4 +189,28 @@ export interface WarehouseStockPayload {
   full_count: number;
   empty_count: number;
   notes?: string;
+}
+
+export type NotificationType =
+  | 'customer_inactive'
+  | 'order_completed'
+  | 'expense_created'
+  | 'order_note'
+  | 'warehouse_updated'
+  | string;
+
+export interface AdminNotification {
+  id: number;
+  type: NotificationType;
+  message: string;
+  customer_id?: number;
+  order_id?: number;
+  expense_id?: number;
+  last_order_date?: string;
+  screen?: string;
+  read?: boolean;
+  is_read?: boolean;
+  read_at?: string | null;
+  created_at: string;
+  data?: Record<string, string>;
 }

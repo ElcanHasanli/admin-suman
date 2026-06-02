@@ -80,7 +80,9 @@ export function getLegacyOrderNoteText(order: Order): string {
 export function getNetRevenue(summary?: HistorySummary | null): number {
   if (!summary) return 0;
   if (typeof summary.netRevenue === 'number') return summary.netRevenue;
-  return summary.totalRevenue ?? 0;
+  const revenue = summary.totalRevenue ?? 0;
+  const expenses = summary.totalExpenses ?? 0;
+  return revenue - expenses;
 }
 
 export function getDebtCollected(summary?: HistorySummary | null): number {
@@ -276,24 +278,16 @@ export function formatLocalDate(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
-export function getDateRange(preset: 'today' | 'week' | 'month'): { from: string; to: string } {
+export function getDateRange(preset: 'yesterday' | 'today'): { from: string; to: string } {
   const now = new Date();
-  const to = formatLocalDate(now);
-
   if (preset === 'today') {
+    const to = formatLocalDate(now);
     return { from: to, to };
   }
-
-  if (preset === 'week') {
-    const start = new Date(now);
-    const dow = now.getDay();
-    const daysFromMonday = dow === 0 ? 6 : dow - 1;
-    start.setDate(now.getDate() - daysFromMonday);
-    return { from: formatLocalDate(start), to };
-  }
-
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  return { from: formatLocalDate(start), to };
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const d = formatLocalDate(yesterday);
+  return { from: d, to: d };
 }
 
 export function resolveHistoryDateParams(
@@ -306,6 +300,26 @@ export function resolveHistoryDateParams(
   }
   const range = getDateRange(preset === 'custom' ? 'today' : preset);
   return { period: 'custom', startDate: range.from, endDate: range.to };
+}
+
+export function isAdminExpense(expense: { source?: string; category?: string; courier_id?: number | null }): boolean {
+  const src = (expense.source || '').toLowerCase();
+  const cat = (expense.category || '').toLowerCase();
+  return src === 'admin' || cat === 'admin' || expense.courier_id == null;
+}
+
+export function getExpenseAuthorLabel(expense: {
+  courier_name?: string;
+  source?: string;
+  category?: string;
+  courier_id?: number | null;
+}): string {
+  if (isAdminExpense(expense)) return 'Admin';
+  return expense.courier_name?.trim() || 'Kuryer';
+}
+
+export function sumExpenseAmounts(expenses: { amount: number | string }[]): number {
+  return expenses.reduce((sum, e) => sum + parseExpenseAmount(e.amount), 0);
 }
 
 export function formatWarehouseUpdateSummary(u: WarehouseUpdate): string {

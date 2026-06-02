@@ -2,6 +2,7 @@
 
 import { Sidebar } from '@/components/layout/Sidebar';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
+import { MobileAppHeader } from '@/components/layout/MobileAppHeader';
 import { useAppLayout } from '@/components/layout/useAppLayout';
 
 export function DashboardShell({
@@ -32,11 +33,12 @@ export function DashboardShell({
             .filter(Boolean)
             .join(' ')}
         >
+          {bottomNav && <MobileAppHeader onLogout={onLogout} />}
           {children}
         </main>
       </div>
 
-      {bottomNav && <BottomTabBar onLogout={onLogout} />}
+      {bottomNav && <BottomTabBar />}
     </div>
   );
 }

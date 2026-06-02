@@ -17,8 +17,22 @@ import {
   isBackendMigrationError,
   patchWarehouseStock,
 } from '@/lib/api';
-import type { Courier, WarehousePeriod, WarehouseSummaryResponse, WarehouseUpdate } from '@/lib/types';
-import { formatDateTime, formatWarehouseUpdateSummary } from '@/lib/utils';
+import type {
+  Courier,
+  DateRangePreset,
+  WarehouseSummaryResponse,
+  WarehouseUpdate,
+} from '@/lib/types';
+import {
+  formatDateTime,
+  formatWarehouseUpdateSummary,
+  isDateInRange,
+  resolveHistoryDateParams,
+} from '@/lib/utils';
+import {
+  DateRangePresetButtons,
+  useDateRangeState,
+} from '@/components/ui/DateRangePresets';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -28,17 +42,12 @@ import { Toast, ToastType } from '@/components/ui/Toast';
 
 const REFRESH_MS = 30_000;
 
-const periodOptions: { key: WarehousePeriod; label: string }[] = [
-  { key: 'today', label: 'Bu gün' },
-  { key: 'week', label: 'Bu həftə' },
-  { key: 'month', label: 'Bu ay' },
-];
-
 export function WarehouseView() {
   const [summary, setSummary] = useState<WarehouseSummaryResponse | null>(null);
   const [updates, setUpdates] = useState<WarehouseUpdate[]>([]);
   const [couriers, setCouriers] = useState<Courier[]>([]);
-  const [period, setPeriod] = useState<WarehousePeriod>('today');
+  const { preset, setPreset, dateFrom, setDateFrom, dateTo, setDateTo } =
+    useDateRangeState('today');
   const [courierId, setCourierId] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,12 +62,17 @@ export function WarehouseView() {
       else setRefreshing(true);
       try {
         const cid = courierId ? Number(courierId) : undefined;
+        const { startDate, endDate } = resolveHistoryDateParams(preset, dateFrom, dateTo);
+        const apiPeriod = preset === 'custom' ? 'custom' : preset;
         const [summaryData, updatesData] = await Promise.all([
           getWarehouseSummary(),
-          getWarehouseUpdates(period, cid),
+          getWarehouseUpdates(apiPeriod, cid, startDate, endDate),
         ]);
         setSummary(summaryData);
-        setUpdates(updatesData);
+        const filtered = updatesData.filter((u) =>
+          isDateInRange(u.created_at, startDate, endDate)
+        );
+        setUpdates(filtered.length > 0 || updatesData.length === 0 ? filtered : updatesData);
       } catch (err) {
         setToast({
           message: isBackendMigrationError(err)
@@ -73,7 +87,7 @@ export function WarehouseView() {
         setRefreshing(false);
       }
     },
-    [period, courierId]
+    [preset, dateFrom, dateTo, courierId]
   );
 
   useEffect(() => {
@@ -136,22 +150,10 @@ export function WarehouseView() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {periodOptions.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => setPeriod(p.key)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                period === p.key
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <DateRangePresetButtons
+          preset={preset as DateRangePreset}
+          onPresetChange={setPreset}
+        />
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={courierId}
@@ -180,6 +182,28 @@ export function WarehouseView() {
           </Button>
         </div>
       </div>
+
+      {preset === 'custom' && (
+        <Card className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <Input
+              label="Başlanğıc tarixi"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+            <Input
+              label="Son tarix"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+            <Button type="button" variant="secondary" onClick={() => void load()} className="w-full sm:w-auto">
+              Tətbiq et
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
