@@ -19,9 +19,11 @@ export interface Customer {
   phone: string;
   phone2?: string | null;
   address: string;
-  price: number;
+  price: number | string;
   active_bidons: number;
-  debt: number;
+  debt: number | string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CustomerPayload {
@@ -40,10 +42,27 @@ export interface DebtPayment {
   id?: number;
   customer_id?: number;
   customer_name?: string;
-  amount: number;
-  previous_debt?: number;
-  new_debt?: number;
+  amount: number | string;
+  previous_debt?: number | string;
+  new_debt?: number | string;
+  recorded_by_name?: string;
   created_at: string;
+}
+
+export interface CustomerStats {
+  total_orders: number;
+  completed_orders: number;
+  active_orders: number;
+  last_order_at?: string | null;
+  last_completed_at?: string | null;
+  total_order_value?: number | string;
+}
+
+export interface CustomerDetailResponse {
+  customer: Customer;
+  stats: CustomerStats;
+  recent_orders: Order[];
+  debt_payments: DebtPayment[];
 }
 
 export interface UpdateCustomerResponse {
@@ -88,6 +107,7 @@ export interface Order {
   /** V2: qeydlər massivi; köhnə API: tək sətir string */
   notes?: OrderNote[] | string;
   created_at?: string;
+  assigned_at?: string;
   completed_at?: string;
   payment_type?: PaymentType | string;
   amount_paid?: number | string;

@@ -39,7 +39,7 @@ Backend avtomatik yoxlayır: müştəri 30+ gündür sifariş verməyibsə:
 | `lib/notifications.ts` | Oxunub/oxunmayıb, naviqasiya yolu |
 | `lib/push.ts` | Push toxunanda eyni yol |
 
-**Naviqasiya:** `customer_inactive` → `/dashboard/customers?customer_id=<id>` — sətir sarı vurğulanır.
+**Naviqasiya:** `customer_inactive` → `/dashboard/customers/<id>/` — müştəri detal səhifəsi.
 
 **Nav:** Sidebar (desktop) və alt tab bar (mobil) — **Bildiriş** (`Bell`).
 

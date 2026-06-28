@@ -1,6 +1,7 @@
 import type {
   Courier,
   Customer,
+  CustomerDetailResponse,
   CustomerPayload,
   Expense,
   ExpensePayload,
@@ -251,6 +252,10 @@ export async function login(email: string, password: string, licenseCode: string
 export async function getCustomers(): Promise<Customer[]> {
   const data = await request<unknown>('/customers');
   return unwrapList<Customer>(data, ['customers']);
+}
+
+export async function getCustomerById(id: number): Promise<CustomerDetailResponse> {
+  return request<CustomerDetailResponse>(`/customers/${id}`);
 }
 
 export async function searchCustomers(q: string): Promise<Customer[]> {

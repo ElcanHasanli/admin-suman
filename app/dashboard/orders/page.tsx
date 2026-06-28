@@ -1,4 +1,5 @@
-import { OrdersView } from '@/components/orders/OrdersView';
+import { Suspense } from 'react';
+import { OrdersPageClient } from '@/app/dashboard/orders/OrdersPageClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function OrdersPage() {
@@ -8,7 +9,9 @@ export default function OrdersPage() {
         title="Sifarişlər"
         description="Sifariş yaratma, redaktə və tamamlama"
       />
-      <OrdersView />
+      <Suspense fallback={<p className="py-8 text-center text-slate-500">Yüklənir...</p>}>
+        <OrdersPageClient />
+      </Suspense>
     </div>
   );
 }

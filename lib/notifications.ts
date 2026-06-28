@@ -25,7 +25,7 @@ export function getNotificationTargetPath(n: AdminNotification): string {
   if (type === 'customer_inactive') {
     const cid = getNotificationCustomerId(n);
     if (cid != null && !Number.isNaN(cid)) {
-      return `/dashboard/customers?customer_id=${cid}`;
+      return `/dashboard/customers/${cid}/`;
     }
     return '/dashboard/customers';
   }

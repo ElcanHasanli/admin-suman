@@ -61,7 +61,7 @@ DELETE /api/devices/unregister
 | `warehouse_updated` | `warehouse` | — |
 | `customer_inactive` | `customers` | `customer_id`, `last_order_date` |
 
-Kod: `lib/push.ts` → müvafiq `/dashboard/...` səhifəsi. `customer_inactive` üçün `/dashboard/customers?customer_id=...`.
+Kod: `lib/push.ts` → müvafiq `/dashboard/...` səhifəsi. `customer_inactive` üçün `/dashboard/customers/<id>/`.
 
 ## In-app (push gəlməyəndə)
 

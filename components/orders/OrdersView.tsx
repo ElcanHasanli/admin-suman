@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus,
   Pencil,
@@ -14,6 +14,8 @@ import {
   createOrderNote,
   deleteOrder,
   getCouriers,
+  getCustomerById,
+  getOrderById,
   getOrderNotes,
   getOrders,
   getCompletedOrders,
@@ -60,7 +62,13 @@ const emptyOrderForm = {
   address: '',
 };
 
-export function OrdersView() {
+export function OrdersView({
+  prefillCustomerId = null,
+  openOrderId = null,
+}: {
+  prefillCustomerId?: number | null;
+  openOrderId?: number | null;
+}) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,6 +209,36 @@ export function OrdersView() {
     loadOrderNotes(order.id);
     setModalOpen(true);
   };
+
+  const prefillDone = useRef(false);
+  const orderOpenDone = useRef(false);
+
+  useEffect(() => {
+    if (!prefillCustomerId || loading || prefillDone.current) return;
+    prefillDone.current = true;
+    void (async () => {
+      try {
+        const detail = await getCustomerById(prefillCustomerId);
+        selectCustomer(detail.customer);
+        setModalOpen(true);
+      } catch {
+        showToast('Müştəri yüklənə bilmədi', 'error');
+      }
+    })();
+  }, [prefillCustomerId, loading]);
+
+  useEffect(() => {
+    if (!openOrderId || loading || orderOpenDone.current) return;
+    orderOpenDone.current = true;
+    void (async () => {
+      try {
+        const order = await getOrderById(openOrderId);
+        openEdit(order);
+      } catch {
+        showToast('Sifariş tapılmadı', 'error');
+      }
+    })();
+  }, [openOrderId, loading]);
 
   const handleMarkDone = async (order: Order) => {
     const ok = await requestConfirm({

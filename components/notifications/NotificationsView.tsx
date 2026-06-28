@@ -69,12 +69,7 @@ export function NotificationsView() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-sky-100 bg-sky-50/80 p-4">
-        <p className="text-sm text-sky-900">
-          <strong>Mobil (iOS/Android):</strong> telefona push gəlmirsə, passiv müştərilər və digər
-          xəbərlər burada görünür. Səhifə açılanda server yenidən yoxlayır.
-        </p>
-      </Card>
+     
 
       <div className="flex flex-wrap items-center gap-2">
         <button

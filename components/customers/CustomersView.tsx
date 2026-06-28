@@ -1,15 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Pencil, Trash2, Download, Search } from 'lucide-react';
-import {
-  ApiError,
-  createCustomer,
-  deleteCustomer,
-  exportCustomersExcel,
-  getCustomers,
-  updateCustomer,
-} from '@/lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, Pencil, Trash2, Download, Search, ChevronRight } from 'lucide-react';
+import { deleteCustomer, exportCustomersExcel, getCustomers } from '@/lib/api';
 import type { Customer } from '@/lib/types';
 import {
   downloadBlob,
@@ -17,48 +11,29 @@ import {
   getExportSuccessMessage,
 } from '@/lib/download';
 import {
-  buildCustomerPayload,
-  customerToFormFields,
   formatCurrency,
-  formatCustomerPhones,
+  formatLocalDate,
   getCustomerActiveBidons,
   getCustomerDebt,
-  formatLocalDate,
   getCustomerName,
   getCustomerPhone,
-  getCustomerPhone2,
   getCustomerPrice,
+  truncateAddress,
 } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Modal } from '@/components/ui/Modal';
 import { Card } from '@/components/ui/Card';
 import { TableScroll } from '@/components/ui/TableScroll';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
+import { CustomerFormModal } from '@/components/customers/CustomerFormModal';
 
-const emptyForm = {
-  fullName: '',
-  phone: '',
-  phone2: '',
-  address: '',
-  price: '',
-  activeBidons: '',
-  debt: '',
-};
-
-export function CustomersView({
-  highlightCustomerId = null,
-}: {
-  highlightCustomerId?: number | null;
-}) {
+export function CustomersView() {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
+  const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const { requestConfirm, ConfirmDialog } = useConfirm();
 
@@ -87,7 +62,7 @@ export function CustomersView({
     return customers.filter((c) => {
       const name = getCustomerName(c).toLowerCase();
       const phone = getCustomerPhone(c).toLowerCase();
-      const phone2 = getCustomerPhone2(c).toLowerCase();
+      const phone2 = (c.phone2 || '').toLowerCase();
       const address = (c.address || '').toLowerCase();
       return (
         name.includes(q) ||
@@ -99,15 +74,17 @@ export function CustomersView({
   }, [customers, search]);
 
   const openCreate = () => {
-    setEditId(null);
-    setForm(emptyForm);
+    setEditCustomer(null);
     setModalOpen(true);
   };
 
   const openEdit = (c: Customer) => {
-    setEditId(c.id);
-    setForm(customerToFormFields(c));
+    setEditCustomer(c);
     setModalOpen(true);
+  };
+
+  const openDetail = (id: number) => {
+    router.push(`/dashboard/customers/${id}/`);
   };
 
   const handleExport = async () => {
@@ -137,62 +114,6 @@ export function CustomersView({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const price = Number(form.price);
-    const activeBidons = form.activeBidons === '' ? 0 : Number(form.activeBidons);
-    const debt = form.debt === '' ? 0 : Number(form.debt);
-
-    if (!form.fullName.trim() || !form.address.trim() || !form.phone.trim()) {
-      showToast('Ad, telefon və ünvan mütləqdir', 'error');
-      return;
-    }
-    if (isNaN(price) || price <= 0) {
-      showToast('Qiymət düzgün deyil', 'error');
-      return;
-    }
-
-    const payload = buildCustomerPayload({
-      fullName: form.fullName,
-      phone: form.phone,
-      phone2: form.phone2,
-      address: form.address,
-      price,
-      activeBidons,
-      debt,
-    });
-
-    setSaving(true);
-    try {
-      if (editId) {
-        const result = await updateCustomer(editId, payload);
-        if (result.debt_payment && result.debt_payment.amount > 0) {
-          showToast(
-            `Müştəri yeniləndi. Borc ödənişi: ${formatCurrency(result.debt_payment.amount)} (tarixçədə görünəcək)`,
-            'success'
-          );
-        } else {
-          showToast('Müştəri yeniləndi', 'success');
-        }
-      } else {
-        await createCustomer(payload);
-        showToast('Yeni müştəri əlavə edildi', 'success');
-      }
-      setModalOpen(false);
-      load();
-    } catch (err) {
-      const message =
-        err instanceof ApiError && err.status === 409
-          ? err.message || 'Bu telefon nömrəsi artıq başqa müştəriyə aid edilib'
-          : err instanceof Error
-            ? err.message
-            : 'Xəta baş verdi';
-      showToast(message, 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <Toolbar
@@ -202,105 +123,22 @@ export function CustomersView({
         onCreate={openCreate}
       />
 
-      {highlightCustomerId != null && !loading && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Bildirişdən keçid: passiv müştəri vurğulanıb (ID {highlightCustomerId})
-        </p>
-      )}
-
       <Card className="overflow-hidden">
         <CustomersTable
           loading={loading}
           customers={filtered}
-          highlightCustomerId={highlightCustomerId}
+          onDetail={openDetail}
           onEdit={openEdit}
           onDelete={handleDelete}
         />
       </Card>
 
-      <Modal
+      <CustomerFormModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editId ? 'Müştərini redaktə et' : 'Yeni müştəri'}
-      >
-        <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Input
-              label="Ad Soyad"
-              value={form.fullName}
-              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              placeholder="Elcan Həsənli"
-              required
-            />
-            <p className="mt-1 text-xs text-slate-400">
-              Soyad opsionaldır — boşluqdan sonra yazıla bilər
-            </p>
-          </div>
-          <Input
-            label="Telefon"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            placeholder="050 123 45 67"
-            required
-          />
-          <Input
-            label="Telefon 2 (opsional)"
-            value={form.phone2}
-            onChange={(e) => setForm({ ...form, phone2: e.target.value })}
-            placeholder="055 999 88 77"
-          />
-          <Input
-            label="Qiymət (₼/bidon)"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            required
-          />
-          <div className="sm:col-span-2">
-            <Input
-              label="Ünvan"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              required
-            />
-          </div>
-          <Input
-            label="Aktiv bidon"
-            type="number"
-            min="0"
-            value={form.activeBidons}
-            onChange={(e) => setForm({ ...form, activeBidons: e.target.value })}
-          />
-          <Input
-            label="Borc (₼)"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.debt}
-            onChange={(e) => setForm({ ...form, debt: e.target.value })}
-          />
-          {editId && (
-            <p className="text-xs text-slate-500 sm:col-span-2">
-              Borc azaldıqda ödənilən məbləğ tarixçədə «Borc ödənişi» kimi qeyd olunur.
-            </p>
-          )}
-          <div className="flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:justify-end sm:gap-3">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setModalOpen(false)}
-              className="w-full sm:w-auto"
-            >
-              Ləğv et
-            </Button>
-            <Button type="submit" loading={saving} className="w-full sm:w-auto">
-              {editId ? 'Yenilə' : 'Əlavə et'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        customer={editCustomer}
+        onSaved={load}
+      />
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
@@ -349,36 +187,26 @@ function Toolbar({
 function CustomersTable({
   loading,
   customers,
-  highlightCustomerId,
+  onDetail,
   onEdit,
   onDelete,
 }: {
   loading: boolean;
   customers: Customer[];
-  highlightCustomerId?: number | null;
+  onDetail: (id: number) => void;
   onEdit: (c: Customer) => void;
   onDelete: (id: number, name: string) => void;
 }) {
-  const highlightRef = useRef<HTMLTableRowElement>(null);
-
-  useEffect(() => {
-    if (loading || highlightCustomerId == null) return;
-    const t = window.setTimeout(() => {
-      highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 150);
-    return () => window.clearTimeout(t);
-  }, [loading, highlightCustomerId, customers.length]);
-
   return (
     <TableScroll minWidth={760}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ad Soyad</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ad</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Telefon</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ünvan</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Qiymət</th>
-            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Aktiv bidon</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Bidon</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Borc</th>
             <th className="px-3 py-2.5 text-right sm:px-5 sm:py-3">Əməliyyat</th>
           </tr>
@@ -397,24 +225,22 @@ function CustomersTable({
               </td>
             </tr>
           ) : (
-            customers.map((c) => {
-              const highlighted = highlightCustomerId != null && c.id === highlightCustomerId;
-              return (
+            customers.map((c) => (
               <tr
                 key={c.id}
-                ref={highlighted ? highlightRef : undefined}
-                className={`border-b border-slate-50 transition hover:bg-slate-50/50 ${
-                  highlighted ? 'bg-amber-50 ring-2 ring-inset ring-amber-400' : ''
-                }`}
+                onClick={() => onDetail(c.id)}
+                className="cursor-pointer border-b border-slate-50 transition hover:bg-sky-50/40"
               >
                 <td className="px-3 py-3 font-medium text-slate-900 sm:px-5 sm:py-3.5">
                   {getCustomerName(c)}
                 </td>
                 <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
-                  {formatCustomerPhones(c)}
+                  {getCustomerPhone(c) || '—'}
                 </td>
-                <td className="max-w-[140px] truncate px-3 py-3 text-slate-600 sm:max-w-[200px] sm:px-5 sm:py-3.5">
-                  {c.address}
+                <td className="max-w-[160px] px-3 py-3 sm:max-w-[220px] sm:px-5 sm:py-3.5">
+                  <span className="line-clamp-2 text-slate-600" title={c.address}>
+                    {truncateAddress(c.address, 56)}
+                  </span>
                 </td>
                 <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">
                   {formatCurrency(getCustomerPrice(c))}
@@ -422,30 +248,46 @@ function CustomersTable({
                 <td className="px-3 py-3 font-semibold text-sky-700 sm:px-5 sm:py-3.5">
                   {getCustomerActiveBidons(c)}
                 </td>
-                <td className="px-3 py-3 font-semibold text-red-600 sm:px-5 sm:py-3.5">
+                <td
+                  className={`px-3 py-3 font-semibold sm:px-5 sm:py-3.5 ${
+                    getCustomerDebt(c) > 0 ? 'text-red-600' : 'text-slate-600'
+                  }`}
+                >
                   {formatCurrency(getCustomerDebt(c))}
                 </td>
                 <td className="px-3 py-3 sm:px-5 sm:py-3.5">
-                  <div className="flex justify-end gap-1">
+                  <div
+                    className="flex items-center justify-end gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
+                      type="button"
+                      onClick={() => onDetail(c.id)}
+                      className="rounded-lg px-2 py-2 text-xs font-medium text-sky-600 hover:bg-sky-50"
+                    >
+                      Detallar
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => onEdit(c)}
-                      className="rounded-lg p-2.5 text-slate-500 transition hover:bg-sky-50 hover:text-sky-600"
+                      className="rounded-lg p-2 text-slate-500 hover:bg-sky-50 hover:text-sky-600"
                       title="Redaktə"
                     >
                       <Pencil size={16} />
                     </button>
                     <button
+                      type="button"
                       onClick={() => onDelete(c.id, getCustomerName(c))}
-                      className="rounded-lg p-2.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+                      className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600"
                       title="Sil"
                     >
                       <Trash2 size={16} />
                     </button>
+                    <ChevronRight size={18} className="hidden text-slate-300 sm:block" />
                   </div>
                 </td>
               </tr>
-            );
-            })
+            ))
           )}
         </tbody>
       </table>

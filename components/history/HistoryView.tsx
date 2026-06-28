@@ -435,9 +435,7 @@ function AddAdminExpenseModal({
           placeholder="Məs: Ofis icarəsi, yanacaq, kuryer ödənişi..."
           required
         />
-        <p className="text-xs text-slate-500">
-          Şirkət xərci serverdə <code className="text-[11px]">source: admin</code> ilə qeyd olunur.
-        </p>
+     
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Ləğv et

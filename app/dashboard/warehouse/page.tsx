@@ -6,7 +6,7 @@ export default function WarehousePage() {
     <div className="space-y-6 sm:space-y-8">
       <PageHeader
         title="Su doldurma anbarı"
-        description="Kuryer yeniləmələri real vaxtda · hər 30 saniyədə avtomatik yenilənir"
+        description=""
       />
       <WarehouseView />
     </div>

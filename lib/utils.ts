@@ -119,8 +119,24 @@ export function parseExpenseAmount(amount: number | string): number {
   return typeof amount === 'string' ? parseFloat(amount) || 0 : amount ?? 0;
 }
 
+export function truncateAddress(address: string, maxLen = 48): string {
+  const t = address.trim();
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, maxLen).trim()}…`;
+}
+
+export function phoneToTel(phone: string): string {
+  const digits = phone.replace(/[^\d+]/g, '');
+  return digits ? `tel:${digits}` : '#';
+}
+
+export function parseMoney(value: number | string | undefined): number {
+  if (value == null) return 0;
+  return typeof value === 'string' ? parseFloat(value) || 0 : value;
+}
+
 export function getCustomerPrice(customer: Customer): number {
-  return customer.price ?? 0;
+  return parseMoney(customer.price);
 }
 
 export function getCustomerActiveBidons(customer: Customer): number {
