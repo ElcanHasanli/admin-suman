@@ -108,8 +108,18 @@ export function CustomerFormModal({
         open={open}
         onClose={onClose}
         title={editId ? 'Müştərini redaktə et' : 'Yeni müştəri'}
+        footer={
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+            <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
+              Ləğv et
+            </Button>
+            <Button type="submit" form="customer-form" loading={saving} className="w-full sm:w-auto">
+              {editId ? 'Yenilə' : 'Əlavə et'}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={(e) => void handleSubmit(e)} className="grid gap-4 sm:grid-cols-2">
+        <form id="customer-form" onSubmit={(e) => void handleSubmit(e)} className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Input
               label="Ad Soyad"
@@ -169,14 +179,6 @@ export function CustomerFormModal({
               Borc azaldıqda ödənilən məbləğ tarixçədə «Borc ödənişi» kimi qeyd olunur.
             </p>
           )}
-          <div className="flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:justify-end sm:gap-3">
-            <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
-              Ləğv et
-            </Button>
-            <Button type="submit" loading={saving} className="w-full sm:w-auto">
-              {editId ? 'Yenilə' : 'Əlavə et'}
-            </Button>
-          </div>
         </form>
       </Modal>
       {toast && (

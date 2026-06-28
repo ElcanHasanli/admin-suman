@@ -60,7 +60,14 @@ export function isNavActive(
   pathname: string,
   item: DashboardNavItem
 ): boolean {
-  return item.exact
-    ? pathname === item.href
-    : pathname.startsWith(item.href);
+  if (item.exact) {
+    return pathname === item.href;
+  }
+  if (item.href === '/dashboard/customers') {
+    return (
+      pathname === '/dashboard/customers' ||
+      pathname.startsWith('/dashboard/customers/')
+    );
+  }
+  return pathname.startsWith(item.href);
 }

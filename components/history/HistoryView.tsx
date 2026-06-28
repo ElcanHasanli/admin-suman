@@ -59,6 +59,16 @@ import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { Modal } from '@/components/ui/Modal';
 import { useConfirm } from '@/components/ui/ConfirmModal';
+import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
+import {
+  MobileCard,
+  MobileCardActions,
+  MobileCardField,
+  MobileCardGrid,
+  MobileCardList,
+  MobileCardTitle,
+  MobileEmpty,
+} from '@/components/ui/MobileCards';
 import {
   DateRangePresetButtons,
   useDateRangeState,
@@ -287,6 +297,30 @@ function ExpensesTable({
           Kuryer xərcləri + adminin qeyd etdiyi şirkət xərcləri (yanacaq, icarə, materiallar və s.)
         </p>
       </div>
+      <MobileOnly>
+        <div className="p-3">
+          {loading ? (
+            <MobileEmpty>Yüklənir...</MobileEmpty>
+          ) : expenses.length === 0 ? (
+            <MobileEmpty>Bu dövrdə xərc yoxdur</MobileEmpty>
+          ) : (
+            <MobileCardList>
+              {expenses.map((e) => (
+                <MobileCard key={e.id} className={isAdminExpense(e) ? 'border-amber-200 bg-amber-50/30' : ''}>
+                  <MobileCardTitle subtitle={formatDateTime(e.created_at)}>
+                    {getExpenseAuthorLabel(e)} · {formatCurrency(parseExpenseAmount(e.amount))}
+                  </MobileCardTitle>
+                  <p className="text-sm text-slate-700">{e.description}</p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {getExpenseCategoryLabel(e.category)}
+                  </p>
+                </MobileCard>
+              ))}
+            </MobileCardList>
+          )}
+        </div>
+      </MobileOnly>
+      <DesktopOnly>
       <TableScroll minWidth={560}>
         <table className="w-full text-sm">
           <thead>
@@ -338,6 +372,7 @@ function ExpensesTable({
           </tbody>
         </table>
       </TableScroll>
+      </DesktopOnly>
     </Card>
   );
 }
@@ -403,8 +438,23 @@ function AddAdminExpenseModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Şirkət xərci əlavə et" size="md">
-      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Şirkət xərci əlavə et"
+      size="md"
+      footer={
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+          <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
+            Ləğv et
+          </Button>
+          <Button type="submit" form="admin-expense-form" loading={saving} className="w-full sm:w-auto">
+            Əlavə et
+          </Button>
+        </div>
+      }
+    >
+      <form id="admin-expense-form" onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
         <Input
           label="Məbləğ (₼)"
           type="number"
@@ -435,15 +485,6 @@ function AddAdminExpenseModal({
           placeholder="Məs: Ofis icarəsi, yanacaq, kuryer ödənişi..."
           required
         />
-     
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
-            Ləğv et
-          </Button>
-          <Button type="submit" loading={saving} className="w-full sm:w-auto">
-            Əlavə et
-          </Button>
-        </div>
       </form>
     </Modal>
   );
@@ -464,6 +505,41 @@ function DebtPaymentsTable({
         </h3>
         <p className="text-xs text-slate-500 sm:text-sm">Müştəri borcu azaldılanda</p>
       </div>
+      <MobileOnly>
+        <div className="p-3">
+          {loading ? (
+            <MobileEmpty>Yüklənir...</MobileEmpty>
+          ) : payments.length === 0 ? (
+            <MobileEmpty>Bu dövrdə borc ödənişi yoxdur</MobileEmpty>
+          ) : (
+            <MobileCardList>
+              {payments.map((p, i) => (
+                <MobileCard key={p.id ?? i}>
+                  <MobileCardTitle subtitle={formatDateTime(p.created_at)}>
+                    {p.customer_name || '—'}
+                  </MobileCardTitle>
+                  <MobileCardGrid>
+                    <MobileCardField
+                      label="Ödənilən"
+                      value={formatCurrency(p.amount)}
+                      valueClassName="text-emerald-700"
+                    />
+                    <MobileCardField
+                      label="Borc"
+                      value={
+                        p.previous_debt != null && p.new_debt != null
+                          ? `${formatCurrency(p.previous_debt)} → ${formatCurrency(p.new_debt)}`
+                          : '—'
+                      }
+                    />
+                  </MobileCardGrid>
+                </MobileCard>
+              ))}
+            </MobileCardList>
+          )}
+        </div>
+      </MobileOnly>
+      <DesktopOnly>
       <TableScroll minWidth={600}>
         <table className="w-full text-sm">
           <thead>
@@ -510,6 +586,7 @@ function DebtPaymentsTable({
           </tbody>
         </table>
       </TableScroll>
+      </DesktopOnly>
     </Card>
   );
 }
@@ -631,6 +708,48 @@ function HistoryTable({
 
   return (
     <>
+    <MobileOnly>
+      <div className="p-3">
+      {loading ? (
+        <MobileEmpty>Yüklənir...</MobileEmpty>
+      ) : orders.length === 0 ? (
+        <MobileEmpty>Bu tarix aralığında tamamlanmış sifariş yoxdur</MobileEmpty>
+      ) : (
+        <MobileCardList>
+          {orders.map((order) => (
+            <MobileCard key={order.id}>
+              <MobileCardTitle subtitle={getOrderCourierName(order)}>
+                {getOrderCustomerName(order)}
+              </MobileCardTitle>
+              <MobileCardGrid>
+                <MobileCardField label="Bidon" value={getOrderBidonCount(order)} />
+                <MobileCardField label="Qiymət" value={formatCurrency(order.price)} />
+                <MobileCardField label="Tarix" value={getOrderDate(order)} />
+                <MobileCardField label="Ödəniş" value={<PaymentTypeCell order={order} />} />
+              </MobileCardGrid>
+              <div className="mt-2">
+                <OrderPaidStatus order={order} />
+              </div>
+              {!isOrderPaid(order) && (
+                <MobileCardActions>
+                  <Button
+                    type="button"
+                    variant="success"
+                    loading={markingId === order.id}
+                    onClick={() => handleMarkPaid(order)}
+                    className="w-full text-xs"
+                  >
+                    Ödənildi et
+                  </Button>
+                </MobileCardActions>
+              )}
+            </MobileCard>
+          ))}
+        </MobileCardList>
+      )}
+      </div>
+    </MobileOnly>
+    <DesktopOnly>
     <TableScroll minWidth={920}>
       <table className="w-full text-sm">
         <thead>
@@ -708,6 +827,7 @@ function HistoryTable({
         </tbody>
       </table>
     </TableScroll>
+    </DesktopOnly>
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}

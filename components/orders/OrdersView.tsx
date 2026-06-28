@@ -52,6 +52,16 @@ import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
+import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
+import {
+  MobileCard,
+  MobileCardActions,
+  MobileCardField,
+  MobileCardGrid,
+  MobileCardList,
+  MobileCardTitle,
+  MobileEmpty,
+} from '@/components/ui/MobileCards';
 
 type FilterMode = 'all' | 'pending' | 'today_completed' | 'range';
 
@@ -398,6 +408,73 @@ export function OrdersView({
       </div>
 
       <Card className="overflow-hidden">
+        <MobileOnly>
+          <div className="p-3">
+            {loading ? (
+              <MobileEmpty>Yüklənir...</MobileEmpty>
+            ) : filteredOrders.length === 0 ? (
+              <MobileEmpty>Sifariş tapılmadı</MobileEmpty>
+            ) : (
+              <MobileCardList>
+                {filteredOrders.map((order) => (
+                  <MobileCard key={order.id}>
+                    <MobileCardTitle
+                      badge={
+                        <Badge variant={orderStatusVariant(order.status)}>
+                          {getOrderStatusLabel(order.status)}
+                        </Badge>
+                      }
+                      subtitle={getOrderCourierName(order)}
+                    >
+                      {getOrderCustomerName(order)}
+                    </MobileCardTitle>
+                    <MobileCardGrid>
+                      <MobileCardField label="Bidon" value={getOrderBidonCount(order)} />
+                      <MobileCardField
+                        label="Qiymət"
+                        value={formatCurrency(order.price)}
+                      />
+                      <MobileCardField
+                        label="Tarix"
+                        value={getOrderDate(order) || '—'}
+                        className="col-span-2"
+                      />
+                    </MobileCardGrid>
+                    {order.address && (
+                      <p className="mt-2 line-clamp-2 text-xs text-slate-500">{order.address}</p>
+                    )}
+                    <MobileCardActions>
+                      {!isOrderCompleted(order) && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkDone(order)}
+                          className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"
+                        >
+                          Tamamla
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openEdit(order)}
+                        className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700"
+                      >
+                        Redaktə
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(order)}
+                        className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
+                      >
+                        Sil
+                      </button>
+                    </MobileCardActions>
+                  </MobileCard>
+                ))}
+              </MobileCardList>
+            )}
+          </div>
+        </MobileOnly>
+        <DesktopOnly>
         <TableScroll minWidth={760}>
           <table className="w-full text-sm">
             <thead>
@@ -487,6 +564,7 @@ export function OrdersView({
             </tbody>
           </table>
         </TableScroll>
+        </DesktopOnly>
       </Card>
 
       <Modal
@@ -494,8 +572,16 @@ export function OrdersView({
         onClose={() => setModalOpen(false)}
         title={editOrder ? 'Sifarişi redaktə et' : 'Yeni sifariş'}
         size="lg"
+        footer={
+          <OrderFormActions
+            formId="order-form"
+            saving={saving}
+            onCancel={() => setModalOpen(false)}
+            edit={!!editOrder}
+          />
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="order-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Müştəri axtar
@@ -573,8 +659,6 @@ export function OrdersView({
               </p>
             )}
           </div>
-
-          <OrderFormActions saving={saving} onCancel={() => setModalOpen(false)} edit={!!editOrder} />
         </form>
       </Modal>
 
@@ -662,21 +746,23 @@ function OrderSearchBar({
 }
 
 function OrderFormActions({
+  formId,
   saving,
   onCancel,
   edit,
 }: {
+  formId: string;
   saving: boolean;
   onCancel: () => void;
   edit: boolean;
 }) {
   return (
-    <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
+    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
       <Button type="button" variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
         Ləğv et
       </Button>
-      <Button type="submit" loading={saving} className="w-full sm:w-auto">
-        {edit ? 'Yenilə' : 'Yarat'}
+      <Button type="submit" form={formId} loading={saving} className="w-full sm:w-auto">
+        {edit ? 'Yenilə' : 'Sifarişi yarat'}
       </Button>
     </div>
   );

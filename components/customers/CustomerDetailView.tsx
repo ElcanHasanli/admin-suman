@@ -39,6 +39,15 @@ import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { CustomerFormModal } from '@/components/customers/CustomerFormModal';
+import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
+import {
+  MobileCard,
+  MobileCardField,
+  MobileCardGrid,
+  MobileCardList,
+  MobileCardTitle,
+  MobileEmpty,
+} from '@/components/ui/MobileCards';
 
 export function CustomerDetailView({ customerId }: { customerId: number }) {
   const router = useRouter();
@@ -266,6 +275,41 @@ function RecentOrdersTable({
       <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
         <h3 className="font-semibold text-slate-900">Son sifarişlər ({orders.length})</h3>
       </div>
+      <MobileOnly>
+        <div className="p-3">
+          {orders.length === 0 ? (
+            <MobileEmpty>Sifariş yoxdur</MobileEmpty>
+          ) : (
+            <MobileCardList>
+              {orders.map((o) => (
+                <MobileCard key={o.id} onClick={() => onOrderClick(o.id)}>
+                  <MobileCardTitle
+                    badge={
+                      <Badge variant={orderStatusVariant(o.status)}>
+                        {getOrderStatusLabel(o.status)}
+                      </Badge>
+                    }
+                    subtitle={getOrderCourierName(o)}
+                  >
+                    {formatDateTime(o.created_at)}
+                  </MobileCardTitle>
+                  <MobileCardGrid>
+                    <MobileCardField label="Bidon" value={getOrderBidonCount(o)} />
+                    <MobileCardField label="Məbləğ" value={formatCurrency(parseMoney(o.price))} />
+                    <MobileCardField label="Ödəniş" value={getPaymentTypeLabel(o.payment_type)} />
+                    <MobileCardField
+                      label="Status"
+                      value={getOrderPaidLabel(o)}
+                      valueClassName={isOrderPaid(o) ? 'text-emerald-600' : 'text-red-600'}
+                    />
+                  </MobileCardGrid>
+                </MobileCard>
+              ))}
+            </MobileCardList>
+          )}
+        </div>
+      </MobileOnly>
+      <DesktopOnly>
       <TableScroll minWidth={640}>
         <table className="w-full text-sm">
           <thead>
@@ -321,6 +365,7 @@ function RecentOrdersTable({
           </tbody>
         </table>
       </TableScroll>
+      </DesktopOnly>
     </Card>
   );
 }
@@ -331,6 +376,40 @@ function DebtPaymentsTable({ payments }: { payments: DebtPayment[] }) {
       <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
         <h3 className="font-semibold text-slate-900">Borc ödənişləri ({payments.length})</h3>
       </div>
+      <MobileOnly>
+        <div className="p-3">
+          {payments.length === 0 ? (
+            <MobileEmpty>Borc ödənişi yoxdur</MobileEmpty>
+          ) : (
+            <MobileCardList>
+              {payments.map((p, i) => (
+                <MobileCard key={p.id ?? i}>
+                  <MobileCardTitle subtitle={formatDateTime(p.created_at)}>
+                    {formatCurrency(parseMoney(p.amount))}
+                  </MobileCardTitle>
+                  <MobileCardGrid>
+                    <MobileCardField
+                      label="Əvvəl / Sonra"
+                      value={
+                        p.previous_debt != null && p.new_debt != null
+                          ? `${formatCurrency(parseMoney(p.previous_debt))} → ${formatCurrency(parseMoney(p.new_debt))}`
+                          : '—'
+                      }
+                      className="col-span-2"
+                    />
+                    <MobileCardField
+                      label="Qeyd edən"
+                      value={p.recorded_by_name || '—'}
+                      className="col-span-2"
+                    />
+                  </MobileCardGrid>
+                </MobileCard>
+              ))}
+            </MobileCardList>
+          )}
+        </div>
+      </MobileOnly>
+      <DesktopOnly>
       <TableScroll minWidth={520}>
         <table className="w-full text-sm">
           <thead>
@@ -371,6 +450,7 @@ function DebtPaymentsTable({ payments }: { payments: DebtPayment[] }) {
           </tbody>
         </table>
       </TableScroll>
+      </DesktopOnly>
     </Card>
   );
 }

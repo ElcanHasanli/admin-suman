@@ -1,17 +1,22 @@
 'use client';
 
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useAppLayout } from '@/components/layout/useAppLayout';
 
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   size?: 'md' | 'lg' | 'xl';
 }
 
-export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({ open, onClose, title, children, footer, size = 'md' }: ModalProps) {
+  const { bottomNav } = useAppLayout();
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -33,7 +38,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
   const sizes = {
     md: 'sm:max-w-lg',
@@ -41,9 +46,17 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     xl: 'sm:max-w-4xl',
   };
 
-  return (
+  const bottomOffset = bottomNav
+    ? 'mb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:mb-0'
+    : '';
+
+  const footerPad = bottomNav
+    ? 'pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]'
+    : 'pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]';
+
+  return createPortal(
     <Overlay onClose={onClose}>
-      <Panel sizeClass={sizes[size]}>
+      <Panel sizeClass={sizes[size]} hasFooter={!!footer} bottomOffset={bottomOffset}>
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
           <h2 className="pr-2 text-base font-semibold text-slate-900 sm:text-lg">{title}</h2>
           <button
@@ -60,15 +73,23 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
         >
           {children}
         </div>
+        {footer && (
+          <div
+            className={`shrink-0 border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4 ${footerPad}`}
+          >
+            {footer}
+          </div>
+        )}
       </Panel>
-    </Overlay>
+    </Overlay>,
+    document.body
   );
 }
 
 function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
       role="presentation"
     >
@@ -77,10 +98,24 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
   );
 }
 
-function Panel({ children, sizeClass }: { children: React.ReactNode; sizeClass: string }) {
+function Panel({
+  children,
+  sizeClass,
+  hasFooter,
+  bottomOffset,
+}: {
+  children: React.ReactNode;
+  sizeClass: string;
+  hasFooter: boolean;
+  bottomOffset: string;
+}) {
+  const heightClass = hasFooter
+    ? 'max-h-[min(82dvh,82vh)] sm:max-h-[min(90dvh,90vh)]'
+    : 'max-h-[min(88dvh,88vh)] sm:max-h-[min(90dvh,90vh)]';
+
   return (
     <div
-      className={`flex max-h-[min(92dvh,92vh)] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[min(90dvh,90vh)] sm:rounded-2xl ${sizeClass}`}
+      className={`flex w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl ${heightClass} ${sizeClass} ${bottomOffset}`}
       onClick={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"

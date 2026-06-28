@@ -26,6 +26,16 @@ import { TableScroll } from '@/components/ui/TableScroll';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 import { CustomerFormModal } from '@/components/customers/CustomerFormModal';
+import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
+import {
+  MobileCard,
+  MobileCardActions,
+  MobileCardField,
+  MobileCardGrid,
+  MobileCardList,
+  MobileCardTitle,
+  MobileEmpty,
+} from '@/components/ui/MobileCards';
 
 export function CustomersView() {
   const router = useRouter();
@@ -84,7 +94,7 @@ export function CustomersView() {
   };
 
   const openDetail = (id: number) => {
-    router.push(`/dashboard/customers/${id}/`);
+    router.push(`/dashboard/customers/detail/?id=${id}`);
   };
 
   const handleExport = async () => {
@@ -124,13 +134,83 @@ export function CustomersView() {
       />
 
       <Card className="overflow-hidden">
-        <CustomersTable
-          loading={loading}
-          customers={filtered}
-          onDetail={openDetail}
-          onEdit={openEdit}
-          onDelete={handleDelete}
-        />
+        <MobileOnly>
+          <div className="p-3">
+            {loading ? (
+              <MobileEmpty>Yüklənir...</MobileEmpty>
+            ) : filtered.length === 0 ? (
+              <MobileEmpty>Müştəri tapılmadı</MobileEmpty>
+            ) : (
+              <MobileCardList>
+                {filtered.map((c) => (
+                  <MobileCard key={c.id} onClick={() => openDetail(c.id)}>
+                    <MobileCardTitle subtitle={getCustomerPhone(c) || undefined}>
+                      {getCustomerName(c)}
+                    </MobileCardTitle>
+                    <MobileCardGrid>
+                      <MobileCardField
+                        label="Qiymət"
+                        value={formatCurrency(getCustomerPrice(c))}
+                      />
+                      <MobileCardField label="Bidon" value={getCustomerActiveBidons(c)} />
+                      <MobileCardField
+                        label="Borc"
+                        value={formatCurrency(getCustomerDebt(c))}
+                        valueClassName={getCustomerDebt(c) > 0 ? 'text-red-600' : ''}
+                      />
+                    </MobileCardGrid>
+                    {c.address && (
+                      <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                        {c.address}
+                      </p>
+                    )}
+                    <MobileCardActions>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDetail(c.id);
+                        }}
+                        className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700"
+                      >
+                        Detallar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(c);
+                        }}
+                        className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700"
+                      >
+                        Redaktə
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(c.id, getCustomerName(c));
+                        }}
+                        className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
+                      >
+                        Sil
+                      </button>
+                    </MobileCardActions>
+                  </MobileCard>
+                ))}
+              </MobileCardList>
+            )}
+          </div>
+        </MobileOnly>
+        <DesktopOnly>
+          <CustomersTable
+            loading={loading}
+            customers={filtered}
+            onDetail={openDetail}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+          />
+        </DesktopOnly>
       </Card>
 
       <CustomerFormModal

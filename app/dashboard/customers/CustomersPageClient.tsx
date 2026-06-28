@@ -13,7 +13,7 @@ export function CustomersPageClient() {
     if (!legacyId) return;
     const id = Number(legacyId);
     if (Number.isFinite(id) && id > 0) {
-      router.replace(`/dashboard/customers/${id}/`);
+      router.replace(`/dashboard/customers/detail/?id=${id}`);
     }
   }, [legacyId, router]);
 

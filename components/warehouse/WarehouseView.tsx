@@ -38,6 +38,15 @@ import { Card, StatCard } from '@/components/ui/Card';
 import { TableScroll } from '@/components/ui/TableScroll';
 import { Modal } from '@/components/ui/Modal';
 import { Toast, ToastType } from '@/components/ui/Toast';
+import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
+import {
+  MobileCard,
+  MobileCardField,
+  MobileCardGrid,
+  MobileCardList,
+  MobileCardTitle,
+  MobileEmpty,
+} from '@/components/ui/MobileCards';
 
 const REFRESH_MS = 30_000;
 
@@ -253,6 +262,39 @@ export function WarehouseView() {
         <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
           <h2 className="font-semibold text-slate-900">Yeniləmə tarixçəsi</h2>
         </div>
+        <MobileOnly>
+          <div className="p-3">
+            {loading ? (
+              <MobileEmpty>Yüklənir...</MobileEmpty>
+            ) : updates.length === 0 ? (
+              <MobileEmpty>Bu dövr üçün qeyd yoxdur</MobileEmpty>
+            ) : (
+              <MobileCardList>
+                {updates.map((u, i) => (
+                  <MobileCard key={u.id ?? i}>
+                    <MobileCardTitle subtitle={u.courier_name || '—'}>
+                      {formatDateTime(u.created_at)}
+                    </MobileCardTitle>
+                    <p className="text-sm text-slate-700">{formatWarehouseUpdateSummary(u)}</p>
+                    {u.notes && (
+                      <p className="mt-2 text-xs text-slate-500">Qeyd: {u.notes}</p>
+                    )}
+                    <MobileCardGrid className="mt-3">
+                      <MobileCardField label="Boş ↓" value={u.empty_in} />
+                      <MobileCardField label="Dolu ↓" value={u.full_in} />
+                      <MobileCardField label="Dolu ↑" value={u.full_out} />
+                      <MobileCardField
+                        label="Qaldı (d/b)"
+                        value={`${u.remaining_full} / ${u.remaining_empty}`}
+                      />
+                    </MobileCardGrid>
+                  </MobileCard>
+                ))}
+              </MobileCardList>
+            )}
+          </div>
+        </MobileOnly>
+        <DesktopOnly>
         <TableScroll>
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -305,10 +347,25 @@ export function WarehouseView() {
             </tbody>
           </table>
         </TableScroll>
+        </DesktopOnly>
       </Card>
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Anbar sayımı düzəlt">
-        <form onSubmit={handleSaveStock} className="space-y-4">
+      <Modal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title="Anbar sayımı düzəlt"
+        footer={
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+            <Button type="button" variant="secondary" onClick={() => setEditOpen(false)} className="w-full sm:w-auto">
+              Ləğv et
+            </Button>
+            <Button type="submit" form="warehouse-stock-form" disabled={saving} className="w-full sm:w-auto">
+              {saving ? 'Saxlanır...' : 'Saxla'}
+            </Button>
+          </div>
+        }
+      >
+        <form id="warehouse-stock-form" onSubmit={handleSaveStock} className="space-y-4">
           <p className="text-sm text-slate-600">
             Sayım səhvi və ya ilk qurulum üçün anbardakı dolu/boş bidon sayını birbaşa
             yeniləyin.
@@ -335,14 +392,6 @@ export function WarehouseView() {
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
             placeholder="Məs: İnventar sayımı"
           />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>
-              Ləğv et
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saxlanır...' : 'Saxla'}
-            </Button>
-          </div>
         </form>
       </Modal>
 
