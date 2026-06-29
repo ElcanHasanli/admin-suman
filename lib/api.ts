@@ -3,6 +3,7 @@ import type {
   Customer,
   CustomerDetailResponse,
   CustomerPayload,
+  DebtPayment,
   Expense,
   ExpensePayload,
   ExpensePeriod,
@@ -408,6 +409,18 @@ export async function getCouriers(): Promise<Courier[]> {
   return unwrapList<Courier>(data, ['couriers']);
 }
 
+type HistoryApiResponse = HistoryResponse & { debt_payments?: DebtPayment[] };
+
+/** Backend bəzən snake_case (`debt_payments`) qaytarır */
+function normalizeHistoryResponse(data: HistoryApiResponse): HistoryResponse {
+  const expenses =
+    data.expenses ??
+    (data as { expenses_list?: Expense[] }).expenses_list ??
+    [];
+  const debtPayments = data.debtPayments ?? data.debt_payments ?? [];
+  return { ...data, expenses, debtPayments };
+}
+
 export async function getHistory(
   period: 'today' | 'yesterday' | 'custom',
   startDate?: string,
@@ -418,7 +431,8 @@ export async function getHistory(
     params.set('startDate', startDate);
     params.set('endDate', endDate);
   }
-  return request<HistoryResponse>(`/history?${params}`);
+  const data = await request<HistoryApiResponse>(`/history?${params}`);
+  return normalizeHistoryResponse(data);
 }
 
 export async function exportHistoryExcel(
