@@ -32,14 +32,14 @@ export default function DashboardPage() {
       };
 
       const [customersRes, ordersRes, historyRes, warehouseRes] = await Promise.allSettled([
-        getCustomers(),
+        getCustomers({ page: 1, limit: 1 }),
         getOrders(),
         getHistory('today'),
         getWarehouseSummary(),
       ]);
 
       if (customersRes.status === 'fulfilled') {
-        next.customers = customersRes.value.length;
+        next.customers = customersRes.value.total;
       }
 
       if (ordersRes.status === 'fulfilled') {

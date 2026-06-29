@@ -188,22 +188,14 @@ export function HistoryView() {
         <StatCard
           title="Xalis gəlir"
           value={loading ? '...' : formatCurrency(getNetRevenue(summary))}
-          subtitle={
-            loading || !summary
-              ? undefined
-              : `Gəlir ${formatCurrency(getOrderRevenue(summary))} − xərclər ${formatCurrency(getTotalExpenses(summary))}`
-          }
+          
           icon={<TrendingUp size={20} />}
           accent="emerald"
         />
         <StatCard
           title="Ümumi gəlir"
           value={loading ? '...' : formatCurrency(summary?.totalRevenue)}
-          subtitle={
-            loading || !summary
-              ? undefined
-              : `Sifariş ${formatCurrency(getOrderRevenue(summary))} + borc ${formatCurrency(getDebtCollected(summary))}`
-          }
+         
           icon={<Wallet size={20} />}
           accent="sky"
         />
@@ -217,11 +209,7 @@ export function HistoryView() {
         <StatCard
           title="Ümumi xərclər"
           value={loading ? '...' : formatCurrency(getTotalExpenses(summary))}
-          subtitle={
-            loading
-              ? undefined
-              : 'Kuryer + şirkət xərcləri — xalis gəlirdən çıxılır'
-          }
+          
           icon={<TrendingDown size={20} />}
           accent="rose"
         />
@@ -246,7 +234,6 @@ export function HistoryView() {
         <StatCard
           title="Nisyə (gəlir)"
           value={loading ? '...' : formatCurrency(creditRevenue)}
-          subtitle={loading ? undefined : 'Yalnız ödənilmiş nisyə'}
           icon={<CircleDollarSign size={20} />}
           accent="violet"
         />

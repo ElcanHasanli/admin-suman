@@ -38,6 +38,20 @@ export interface CustomerPayload {
   debt: number;
 }
 
+export interface CustomersListParams {
+  page?: number;
+  limit?: number;
+  /** Ad, telefon, ünvan üzrə axtarış */
+  q?: string;
+}
+
+export interface CustomersListResponse {
+  customers: Customer[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface DebtPayment {
   id?: number;
   customer_id?: number;

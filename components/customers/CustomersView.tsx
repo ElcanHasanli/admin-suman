@@ -1,9 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Pencil, Trash2, Download, Search, ChevronRight } from 'lucide-react';
-import { deleteCustomer, exportCustomersExcel, getCustomers } from '@/lib/api';
+import {
+  CUSTOMERS_DEFAULT_PAGE_SIZE,
+  deleteCustomer,
+  exportCustomersExcel,
+  getCustomers,
+} from '@/lib/api';
 import type { Customer } from '@/lib/types';
 import {
   downloadBlob,
@@ -40,8 +45,11 @@ import {
 export function CustomersView() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -50,38 +58,40 @@ export function CustomersView() {
   const showToast = (message: string, type: ToastType = 'info') =>
     setToast({ message, type });
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getCustomers();
-      setCustomers(data);
+      const data = await getCustomers({
+        page,
+        limit: CUSTOMERS_DEFAULT_PAGE_SIZE,
+        q: debouncedSearch || undefined,
+      });
+      setCustomers(data.customers);
+      setTotal(data.total);
+
+      const maxPage = Math.max(1, Math.ceil(data.total / CUSTOMERS_DEFAULT_PAGE_SIZE));
+      if (page > maxPage && maxPage >= 1) {
+        setPage(maxPage);
+      }
     } catch {
       showToast('Müştərilər yüklənə bilmədi', 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, debouncedSearch]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return customers;
-    return customers.filter((c) => {
-      const name = getCustomerName(c).toLowerCase();
-      const phone = getCustomerPhone(c).toLowerCase();
-      const phone2 = (c.phone2 || '').toLowerCase();
-      const address = (c.address || '').toLowerCase();
-      return (
-        name.includes(q) ||
-        phone.includes(q) ||
-        phone2.includes(q) ||
-        address.includes(q)
-      );
-    });
-  }, [customers, search]);
 
   const openCreate = () => {
     setEditCustomer(null);
@@ -138,11 +148,11 @@ export function CustomersView() {
           <div className="p-3">
             {loading ? (
               <MobileEmpty>Yüklənir...</MobileEmpty>
-            ) : filtered.length === 0 ? (
+            ) : customers.length === 0 ? (
               <MobileEmpty>Müştəri tapılmadı</MobileEmpty>
             ) : (
               <MobileCardList>
-                {filtered.map((c) => (
+                {customers.map((c) => (
                   <MobileCard key={c.id} onClick={() => openDetail(c.id)}>
                     <MobileCardTitle subtitle={getCustomerPhone(c) || undefined}>
                       {getCustomerName(c)}
@@ -205,12 +215,20 @@ export function CustomersView() {
         <DesktopOnly>
           <CustomersTable
             loading={loading}
-            customers={filtered}
+            customers={customers}
             onDetail={openDetail}
             onEdit={openEdit}
             onDelete={handleDelete}
           />
         </DesktopOnly>
+        {!loading && total > 0 && (
+          <CustomersPagination
+            page={page}
+            totalItems={total}
+            pageSize={CUSTOMERS_DEFAULT_PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        )}
       </Card>
 
       <CustomerFormModal
@@ -258,6 +276,52 @@ function Toolbar({
         <Button onClick={onCreate} className="w-full sm:w-auto">
           <Plus size={16} />
           Yeni müştəri
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CustomersPagination({
+  page,
+  totalItems,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  if (totalItems <= pageSize) return null;
+
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, totalItems);
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <p className="text-sm text-slate-500">
+        {from}–{to} / {totalItems} müştəri · Səhifə {page} / {totalPages}
+      </p>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          className="flex-1 sm:flex-none"
+        >
+          Əvvəlki
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          className="flex-1 sm:flex-none"
+        >
+          Növbəti
         </Button>
       </div>
     </div>

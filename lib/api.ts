@@ -3,6 +3,8 @@ import type {
   Customer,
   CustomerDetailResponse,
   CustomerPayload,
+  CustomersListParams,
+  CustomersListResponse,
   DebtPayment,
   Expense,
   ExpensePayload,
@@ -20,6 +22,7 @@ import type {
   WarehouseUpdate,
   AdminNotification,
 } from './types';
+import { getCustomerName, getCustomerPhone } from './utils';
 
 const PRODUCTION_API = 'https://api.suman.khamsacraft.az/api';
 
@@ -251,9 +254,78 @@ export async function login(email: string, password: string, licenseCode: string
   return { token: data.token, user: data.user };
 }
 
-export async function getCustomers(): Promise<Customer[]> {
-  const data = await request<unknown>('/customers');
-  return unwrapList<Customer>(data, ['customers']);
+export const CUSTOMERS_DEFAULT_PAGE_SIZE = 20;
+
+function filterCustomersByQuery(list: Customer[], q: string): Customer[] {
+  const lower = q.toLowerCase();
+  return list.filter((c) => {
+    const name = getCustomerName(c).toLowerCase();
+    const phone = getCustomerPhone(c).toLowerCase();
+    const phone2 = (c.phone2 || '').toLowerCase();
+    const address = (c.address || '').toLowerCase();
+    return (
+      name.includes(lower) ||
+      phone.includes(lower) ||
+      phone2.includes(lower) ||
+      address.includes(lower)
+    );
+  });
+}
+
+function paginateCustomersList(
+  list: Customer[],
+  page: number,
+  limit: number
+): CustomersListResponse {
+  const total = list.length;
+  const start = (page - 1) * limit;
+  return {
+    customers: list.slice(start, start + limit),
+    total,
+    page,
+    limit,
+  };
+}
+
+/** Paginated siyahı; köhnə API (yalnız massiv) üçün client-side fallback */
+export async function getCustomers(
+  params: CustomersListParams = {}
+): Promise<CustomersListResponse> {
+  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.max(
+    1,
+    Math.min(params.limit ?? CUSTOMERS_DEFAULT_PAGE_SIZE, 100)
+  );
+  const q = params.q?.trim() ?? '';
+
+  const searchParams = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (q) searchParams.set('q', q);
+
+  const data = await request<unknown>(`/customers?${searchParams}`);
+
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+    const customers = unwrapList<Customer>(obj, ['customers']);
+    const totalRaw = obj.total;
+    if (totalRaw != null && totalRaw !== '') {
+      return {
+        customers,
+        total: Number(totalRaw) || 0,
+        page: Number(obj.page) || page,
+        limit: Number(obj.limit) || limit,
+      };
+    }
+    let list = customers;
+    if (q) list = filterCustomersByQuery(list, q);
+    return paginateCustomersList(list, page, limit);
+  }
+
+  let list = unwrapList<Customer>(data, ['customers']);
+  if (q) list = filterCustomersByQuery(list, q);
+  return paginateCustomersList(list, page, limit);
 }
 
 export async function getCustomerById(id: number): Promise<CustomerDetailResponse> {

@@ -65,3 +65,33 @@ POST /api/devices/register
 `platform`: `"ios"` \| `"android"`, `app`: `"admin"`
 
 **Frontend:** `lib/push.ts` — login sonrası səssiz qeydiyyat (toast yoxdur).
+
+## 5. Müştərilər — səhifələmə
+
+```http
+GET /api/customers?page=1&limit=20&q=elcan
+Authorization: Bearer <admin>
+```
+
+| Parametr | Default | Məna |
+|----------|---------|------|
+| `page` | `1` | Səhifə (1-dən) |
+| `limit` | `20` | Səhifədə say (max 100) |
+| `q` | — | Axtarış: ad, soyad, telefon, ünvan |
+
+Cavab:
+
+```json
+{
+  "customers": [{ "id": 12, "display_name": "...", "phone": "...", "debt": 0 }],
+  "total": 145,
+  "page": 1,
+  "limit": 20
+}
+```
+
+- `total` — həmişə qaytarılır (`q` filtrindən sonra)
+- Sıralama: `display_name` A→Z
+- Dashboard: `GET /api/customers?page=1&limit=1` → `total`
+
+**Frontend:** `getCustomers({ page, limit, q })` — müştərilər səhifəsi `limit=20`, dashboard `limit=1`.
