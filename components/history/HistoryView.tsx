@@ -15,11 +15,11 @@ import {
 } from 'lucide-react';
 import {
   createExpense,
-  exportHistoryExcel,
   getHistory,
   getMigrationErrorHint,
   isBackendMigrationError,
 } from '@/lib/api';
+import { buildHistoryExcelBlob } from '@/lib/historyExport';
 import type { DebtPayment, Expense, HistorySummary, Order } from '@/lib/types';
 import {
   downloadBlob,
@@ -30,6 +30,7 @@ import {
   formatCurrency,
   formatDateTime,
   resolveApiPeriodParams,
+  resolveExportFilenameDates,
   getExpenseCategoryLabel,
   getDebtCollected,
   getNetRevenue,
@@ -126,8 +127,16 @@ export function HistoryView() {
         dateFrom,
         dateTo
       );
-      const blob = await exportHistoryExcel(period, startDate, endDate);
-      await downloadBlob(blob, `tarixce_${startDate}_${endDate}.xlsx`);
+      const { startDate: fileFrom, endDate: fileTo } = resolveExportFilenameDates(
+        preset,
+        dateFrom,
+        dateTo
+      );
+      const data = await getHistory(period, startDate, endDate);
+      const rangeLabel =
+        fileFrom === fileTo ? fileFrom : `${fileFrom} — ${fileTo}`;
+      const blob = await buildHistoryExcelBlob(data, rangeLabel);
+      await downloadBlob(blob, `tarixce_${fileFrom}_${fileTo}.xlsx`);
       setToast({ message: getExportSuccessMessage(), type: 'success' });
     } catch (err) {
       setToast({ message: getExportErrorMessage(err), type: 'error' });

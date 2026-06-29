@@ -359,6 +359,17 @@ export function resolveApiPeriodParams(
   return { period: 'today' };
 }
 
+/** Excel fayl adı üçün — today/yesterday-də API startDate/endDate göndərmir */
+export function resolveExportFilenameDates(
+  preset: DateRangePreset,
+  dateFrom: string,
+  dateTo: string
+): { startDate: string; endDate: string } {
+  if (dateFrom && dateTo) return { startDate: dateFrom, endDate: dateTo };
+  const range = getDateRange(preset === 'yesterday' ? 'yesterday' : 'today');
+  return { startDate: range.from, endDate: range.to };
+}
+
 /** @deprecated use resolveApiPeriodParams */
 export const resolveHistoryDateParams = resolveApiPeriodParams;
 
