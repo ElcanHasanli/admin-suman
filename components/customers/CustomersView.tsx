@@ -298,34 +298,64 @@ function CustomersPagination({
 
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalItems);
+  const pageNumbers = getPaginationPages(page, totalPages);
 
   return (
     <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <p className="text-sm text-slate-500">
-        {from}–{to} / {totalItems} müştəri · Səhifə {page} / {totalPages}
+        {from}–{to} / {totalItems} müştəri
       </p>
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-          className="flex-1 sm:flex-none"
-        >
-          Əvvəlki
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-          className="flex-1 sm:flex-none"
-        >
-          Növbəti
-        </Button>
+      <div className="-mx-1 flex gap-1 overflow-x-auto pb-1 sm:mx-0 sm:pb-0">
+        {pageNumbers.map((item, i) =>
+          item === 'ellipsis' ? (
+            <span
+              key={`ellipsis-${i}`}
+              className="flex h-9 min-w-9 shrink-0 items-center justify-center px-1 text-sm text-slate-400"
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onPageChange(item)}
+              aria-current={item === page ? 'page' : undefined}
+              className={`flex h-9 min-w-9 shrink-0 items-center justify-center rounded-lg px-3 text-sm font-medium transition ${
+                item === page
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {item}
+            </button>
+          )
+        )}
       </div>
     </div>
   );
+}
+
+/** 1 … 4 5 6 … 20 */
+function getPaginationPages(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 9) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const pages: (number | 'ellipsis')[] = [1];
+
+  if (current > 3) pages.push('ellipsis');
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) {
+    if (!pages.includes(i)) pages.push(i);
+  }
+
+  if (current < total - 2) pages.push('ellipsis');
+
+  if (!pages.includes(total)) pages.push(total);
+
+  return pages;
 }
 
 function CustomersTable({
