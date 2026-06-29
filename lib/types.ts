@@ -113,6 +113,16 @@ export interface Order {
   amount_paid?: number | string;
   is_paid?: boolean;
   paid_at?: string | null;
+  remaining_amount?: number | string;
+  customer_debt?: number | string;
+}
+
+export interface MarkOrderPaidResponse {
+  order: Order;
+  debt_payment?: DebtPayment;
+  customer_debt?: number;
+  paid_amount?: number;
+  order_remaining?: number;
 }
 
 export interface OrderPayload {

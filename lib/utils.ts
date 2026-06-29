@@ -182,13 +182,50 @@ export function getOrderPrice(order: Order): number {
   return typeof price === 'string' ? parseFloat(price) || 0 : price ?? 0;
 }
 
+export function getOrderAmountPaid(order: Order): number {
+  if (order.amount_paid != null && order.amount_paid !== '') {
+    return parseMoney(order.amount_paid);
+  }
+  return isOrderPaid(order) ? getOrderPrice(order) : 0;
+}
+
+export function getOrderRemainingAmount(order: Order): number {
+  if (order.remaining_amount != null && order.remaining_amount !== '') {
+    return parseMoney(order.remaining_amount);
+  }
+  if (isOrderPaid(order)) return 0;
+  return Math.max(0, getOrderPrice(order) - getOrderAmountPaid(order));
+}
+
+export function getOrderCustomerDebt(order: Order): number | null {
+  if (order.customer_debt == null || order.customer_debt === '') return null;
+  return parseMoney(order.customer_debt);
+}
+
+export function canMarkOrderDebtPaid(order: Order): boolean {
+  if (isOrderPaid(order)) return false;
+  return getOrderRemainingAmount(order) > 0;
+}
+
+export function formatMarkPaidSuccessMessage(res: {
+  paid_amount?: number;
+  order_remaining?: number;
+  customer_debt?: number;
+}): string {
+  const paid = formatCurrency(res.paid_amount ?? 0);
+  const remaining = formatCurrency(res.order_remaining ?? 0);
+  const debt =
+    res.customer_debt != null ? formatCurrency(res.customer_debt) : '—';
+  return `${paid} ödənildi. Sifarişdə qalan: ${remaining}. Müştəri borcu: ${debt}`;
+}
+
 export function calcUnpaidCreditFromOrders(orders: Order[]): {
   amount: number;
   count: number;
 } {
   const unpaid = orders.filter((o) => !isOrderPaid(o));
   return {
-    amount: unpaid.reduce((sum, o) => sum + getOrderPrice(o), 0),
+    amount: unpaid.reduce((sum, o) => sum + getOrderRemainingAmount(o), 0),
     count: unpaid.length,
   };
 }

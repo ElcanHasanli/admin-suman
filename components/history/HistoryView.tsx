@@ -19,7 +19,6 @@ import {
   getHistory,
   getMigrationErrorHint,
   isBackendMigrationError,
-  markOrderPaid,
 } from '@/lib/api';
 import type { DebtPayment, Expense, HistorySummary, Order } from '@/lib/types';
 import {
@@ -41,7 +40,6 @@ import {
   getOrderRevenue,
   getOrderStatusLabel,
   formatPaidAt,
-  getOrderPaidLabel,
   getCreditRevenue,
   getPaymentTypeLabel,
   getTotalExpenses,
@@ -50,7 +48,13 @@ import {
   parseExpenseAmount,
   getExpenseAuthorLabel,
   isAdminExpense,
+  getOrderAmountPaid,
+  getOrderRemainingAmount,
+  getOrderCustomerDebt,
+  canMarkOrderDebtPaid,
+  getOrderPrice,
 } from '@/lib/utils';
+import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -58,7 +62,6 @@ import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { Modal } from '@/components/ui/Modal';
-import { useConfirm } from '@/components/ui/ConfirmModal';
 import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
 import {
   MobileCard,
@@ -646,14 +649,15 @@ function PaymentTypeCell({ order }: { order: Order }) {
 
 function OrderPaidStatus({ order }: { order: Order }) {
   const paid = isOrderPaid(order);
-  const label = getOrderPaidLabel(order);
+  const remaining = getOrderRemainingAmount(order);
+  const amountPaid = getOrderAmountPaid(order);
 
   if (paid) {
     return (
       <div className="space-y-0.5">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
           <CheckCircle size={16} className="shrink-0" />
-          {label}
+          Ödənilib
         </span>
         {order.paid_at && (
           <p className="text-[11px] text-slate-400">{formatPaidAt(order.paid_at)}</p>
@@ -662,11 +666,57 @@ function OrderPaidStatus({ order }: { order: Order }) {
     );
   }
 
+  if (amountPaid > 0) {
+    return (
+      <div className="space-y-0.5">
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+          Qismən ödənilib
+        </span>
+        <p className="text-[11px] text-slate-500">
+          Ödənilib: {formatCurrency(amountPaid)} · Qalan: {formatCurrency(remaining)}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600">
       <XCircle size={16} className="shrink-0" />
-      {label}
+      Borc
     </span>
+  );
+}
+
+function OrderPriceCell({ order }: { order: Order }) {
+  const price = getOrderPrice(order);
+  const paid = getOrderAmountPaid(order);
+  const remaining = getOrderRemainingAmount(order);
+
+  return (
+    <div>
+      <p className="font-medium">{formatCurrency(price)}</p>
+      {paid > 0 && (
+        <p className="mt-0.5 text-xs text-emerald-600">Ödənilib: {formatCurrency(paid)}</p>
+      )}
+      {!isOrderPaid(order) && remaining > 0 && (
+        <p className="mt-0.5 text-xs font-medium text-red-600">Qalan: {formatCurrency(remaining)}</p>
+      )}
+    </div>
+  );
+}
+
+function OrderCustomerCell({ order }: { order: Order }) {
+  const debt = getOrderCustomerDebt(order);
+  return (
+    <div>
+      <p>{getOrderCustomerName(order)}</p>
+      {debt != null && debt > 0 && (
+        <p className="mt-0.5 text-xs font-medium text-red-600">
+          Müştəri borcu: {formatCurrency(debt)}
+        </p>
+      )}
+      <p className="mt-0.5 text-xs text-slate-400 md:hidden">{getOrderCourierName(order)}</p>
+    </div>
   );
 }
 
@@ -679,32 +729,8 @@ function HistoryTable({
   orders: Order[];
   onMarkPaid: () => void;
 }) {
-  const [markingId, setMarkingId] = useState<number | null>(null);
+  const [payOrder, setPayOrder] = useState<Order | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-  const { requestConfirm, ConfirmDialog } = useConfirm();
-
-  const handleMarkPaid = async (order: Order) => {
-    const ok = await requestConfirm({
-      title: 'Borcu ödənildi et',
-      message: `"${getOrderCustomerName(order)}" sifarişinin borcunu (${formatCurrency(order.price)}) ödənilmiş kimi qeyd etmək istəyirsiniz?`,
-      confirmLabel: 'Ödənildi et',
-      variant: 'success',
-    });
-    if (!ok) return;
-
-    setMarkingId(order.id);
-    try {
-      await markOrderPaid(order.id);
-      onMarkPaid();
-    } catch (err) {
-      setToast({
-        message: err instanceof Error ? err.message : 'Ödəniş qeydə alınmadı',
-        type: 'error',
-      });
-    } finally {
-      setMarkingId(null);
-    }
-  };
 
   return (
     <>
@@ -721,25 +747,43 @@ function HistoryTable({
               <MobileCardTitle subtitle={getOrderCourierName(order)}>
                 {getOrderCustomerName(order)}
               </MobileCardTitle>
+              {getOrderCustomerDebt(order) != null && getOrderCustomerDebt(order)! > 0 && (
+                <p className="mb-2 text-xs font-medium text-red-600">
+                  Müştəri borcu: {formatCurrency(getOrderCustomerDebt(order)!)}
+                </p>
+              )}
               <MobileCardGrid>
                 <MobileCardField label="Bidon" value={getOrderBidonCount(order)} />
-                <MobileCardField label="Qiymət" value={formatCurrency(order.price)} />
+                <MobileCardField
+                  label="Qiymət"
+                  value={formatCurrency(getOrderPrice(order))}
+                />
+                <MobileCardField
+                  label="Ödənilib"
+                  value={formatCurrency(getOrderAmountPaid(order))}
+                />
+                <MobileCardField
+                  label="Qalan"
+                  value={formatCurrency(getOrderRemainingAmount(order))}
+                  valueClassName={
+                    getOrderRemainingAmount(order) > 0 ? 'text-red-600' : 'text-emerald-600'
+                  }
+                />
                 <MobileCardField label="Tarix" value={getOrderDate(order)} />
                 <MobileCardField label="Ödəniş" value={<PaymentTypeCell order={order} />} />
               </MobileCardGrid>
               <div className="mt-2">
                 <OrderPaidStatus order={order} />
               </div>
-              {!isOrderPaid(order) && (
+              {canMarkOrderDebtPaid(order) && (
                 <MobileCardActions>
                   <Button
                     type="button"
                     variant="success"
-                    loading={markingId === order.id}
-                    onClick={() => handleMarkPaid(order)}
+                    onClick={() => setPayOrder(order)}
                     className="w-full text-xs"
                   >
-                    Ödənildi et
+                    Borc ödə
                   </Button>
                 </MobileCardActions>
               )}
@@ -757,7 +801,7 @@ function HistoryTable({
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Müştəri</th>
             <th className="hidden px-3 py-2.5 md:table-cell sm:px-5 sm:py-3">Kuryer</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Bidon</th>
-            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Qiymət</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Qiymət / Qalan</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ödəniş</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ödəndi</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Tarix</th>
@@ -781,17 +825,16 @@ function HistoryTable({
           ) : (
             orders.map((order) => (
               <tr key={order.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">
-                  <p>{getOrderCustomerName(order)}</p>
-                  <p className="mt-0.5 text-xs text-slate-400 md:hidden">
-                    {getOrderCourierName(order)}
-                  </p>
+                <td className="px-3 py-3 sm:px-5 sm:py-3.5">
+                  <OrderCustomerCell order={order} />
                 </td>
                 <td className="hidden px-3 py-3 text-slate-600 md:table-cell sm:px-5 sm:py-3.5">
                   {getOrderCourierName(order)}
                 </td>
                 <td className="px-3 py-3 sm:px-5 sm:py-3.5">{getOrderBidonCount(order)}</td>
-                <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{formatCurrency(order.price)}</td>
+                <td className="px-3 py-3 sm:px-5 sm:py-3.5">
+                  <OrderPriceCell order={order} />
+                </td>
                 <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                   <PaymentTypeCell order={order} />
                 </td>
@@ -807,15 +850,14 @@ function HistoryTable({
                   </Badge>
                 </td>
                 <td className="px-3 py-3 text-right sm:px-5 sm:py-3.5">
-                  {!isOrderPaid(order) ? (
+                  {canMarkOrderDebtPaid(order) ? (
                     <Button
                       type="button"
                       variant="success"
-                      loading={markingId === order.id}
-                      onClick={() => handleMarkPaid(order)}
+                      onClick={() => setPayOrder(order)}
                       className="ml-auto w-full whitespace-nowrap px-3 text-xs sm:w-auto sm:py-1.5"
                     >
-                      Ödənildi et
+                      Borc ödə
                     </Button>
                   ) : (
                     <span className="text-xs text-slate-300">—</span>
@@ -828,10 +870,21 @@ function HistoryTable({
       </table>
     </TableScroll>
     </DesktopOnly>
+
+      <OrderDebtPaymentModal
+        open={payOrder != null}
+        order={payOrder}
+        onClose={() => setPayOrder(null)}
+        onSuccess={(message) => {
+          setPayOrder(null);
+          setToast({ message, type: 'success' });
+          onMarkPaid();
+        }}
+      />
+
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
-      {ConfirmDialog}
     </>
   );
 }

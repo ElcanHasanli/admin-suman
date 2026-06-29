@@ -10,6 +10,7 @@ import type {
   Order,
   OrderNote,
   OrderPayload,
+  MarkOrderPaidResponse,
   UpdateCustomerResponse,
   User,
   WarehousePeriod,
@@ -378,8 +379,24 @@ export async function markOrderDone(id: number) {
   return request(`/orders/${id}/done`, { method: 'PUT' });
 }
 
-export async function markOrderPaid(id: number) {
-  return request(`/orders/${id}/mark-paid`, { method: 'PUT' });
+export async function markOrderPaid(
+  id: number,
+  payload?: { amount?: number }
+): Promise<MarkOrderPaidResponse> {
+  return request<MarkOrderPaidResponse>(`/orders/${id}/mark-paid`, {
+    method: 'PUT',
+    body: JSON.stringify(payload ?? {}),
+  });
+}
+
+export function getMarkPaidErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const code = (err.data as { code?: string } | undefined)?.code;
+    if (code === 'ORDER_ALREADY_PAID') return 'Sifariş artıq tam ödənilib';
+    if (code === 'AMOUNT_EXCEEDS_ORDER') return 'Məbləğ sifariş qalığından böyükdür';
+    return err.message;
+  }
+  return err instanceof Error ? err.message : 'Ödəniş qeydə alınmadı';
 }
 
 export async function deleteOrder(id: number) {
