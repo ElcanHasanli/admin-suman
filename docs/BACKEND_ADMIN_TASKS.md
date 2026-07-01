@@ -95,3 +95,33 @@ Cavab:
 - Dashboard: `GET /api/customers?page=1&limit=1` → `total`
 
 **Frontend:** `getCustomers({ page, limit, q })` — müştərilər səhifəsi `limit=20`, dashboard `limit=1`.
+
+## 6. Sifarişlər — filtrlər
+
+```http
+GET /api/orders?status=assigned&courier_id=5&completedToday=true
+Authorization: Bearer <admin>
+```
+
+Filtrlər **AND** ilə birləşir.
+
+| Parametr | Məna |
+|----------|------|
+| `status` | `pending` \| `assigned` \| `in_progress` \| `completed` |
+| `completedToday=true` | Bu gün (Baku) tamamlanan sifarişlər |
+| `courier_id` | Kuryer ID və ya `unassigned` (kuryersiz) |
+
+**Frontend:** `getOrders({ status, courier_id, completedToday })` — sifarişlər səhifəsi status düymələri + kuryer dropdown.
+
+## 7. Müştəri axtarışı (sifariş yaradarkən)
+
+```http
+GET /api/customers/search?q=nəsimi
+Authorization: Bearer <admin>
+```
+
+- Axtarış: **ad**, **telefon**, **ünvan**
+- Ünvan uyğunluqları **əvvəl** (backend sıralayır)
+- Cavab: `{ customers: [...] }` və ya massiv
+
+**Frontend:** `searchCustomers(q)` — sifariş modalında; nəticə sırası backend-dən olduğu kimi saxlanılır; dropdown-da ünvan göstərilir.

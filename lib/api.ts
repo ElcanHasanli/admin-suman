@@ -13,6 +13,7 @@ import type {
   Order,
   OrderNote,
   OrderPayload,
+  OrdersListParams,
   MarkOrderPaidResponse,
   UpdateCustomerResponse,
   User,
@@ -333,7 +334,7 @@ export async function getCustomerById(id: number): Promise<CustomerDetailRespons
 }
 
 export async function searchCustomers(q: string): Promise<Customer[]> {
-  const params = new URLSearchParams({ q });
+  const params = new URLSearchParams({ q: q.trim() });
   const data = await request<unknown>(`/customers/search?${params}`);
   return unwrapList<Customer>(data, ['customers']);
 }
@@ -363,10 +364,12 @@ export async function exportCustomersExcel(): Promise<Blob> {
   return requestBlob('/customers/export');
 }
 
-export async function getOrders(params?: {
-  completedToday?: boolean;
-}): Promise<Order[]> {
+export async function getOrders(params?: OrdersListParams): Promise<Order[]> {
   const search = new URLSearchParams();
+  if (params?.status) search.set('status', params.status);
+  if (params?.courier_id != null) {
+    search.set('courier_id', String(params.courier_id));
+  }
   if (params?.completedToday) search.set('completedToday', 'true');
   const qs = search.toString();
   const data = await request<unknown>(`/orders${qs ? `?${qs}` : ''}`);

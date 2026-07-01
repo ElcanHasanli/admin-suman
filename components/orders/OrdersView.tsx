@@ -23,7 +23,14 @@ import {
   searchCustomers,
   updateOrder,
 } from '@/lib/api';
-import type { Courier, Customer, Order, OrderNote } from '@/lib/types';
+import type {
+  Courier,
+  Customer,
+  Order,
+  OrderNote,
+  OrderStatus,
+  OrdersListParams,
+} from '@/lib/types';
 import {
   formatCurrency,
   formatCustomerPhones,
@@ -42,7 +49,7 @@ import {
   getOrderNotesList,
   getOrderStatusLabel,
   isOrderCompleted,
-  isOrderPending,
+  truncateAddress,
 } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -63,7 +70,18 @@ import {
   MobileEmpty,
 } from '@/components/ui/MobileCards';
 
-type FilterMode = 'all' | 'pending' | 'today_completed' | 'range';
+type StatusFilter = '' | OrderStatus | 'today_completed';
+type CourierFilter = '' | 'unassigned' | number;
+type ViewMode = 'list' | 'range';
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: '', label: 'Hamısı' },
+  { key: 'pending', label: 'Gözləyən' },
+  { key: 'assigned', label: 'Təyin olunub' },
+  { key: 'in_progress', label: 'Çatdırılır' },
+  { key: 'completed', label: 'Tamamlanan' },
+  { key: 'today_completed', label: 'Bu gün tamamlanan' },
+];
 
 const emptyOrderForm = {
   customerId: '',
@@ -83,7 +101,9 @@ export function OrdersView({
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterMode>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
+  const [courierFilter, setCourierFilter] = useState<CourierFilter>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -106,19 +126,16 @@ export function OrdersView({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let ordersData: Order[];
-      if (filter === 'today_completed') {
-        const { from, to } = getDateRange('today');
-        ordersData = await getCompletedOrders('custom', from, to);
-      } else if (filter === 'range' && dateFrom && dateTo) {
-        ordersData = await getCompletedOrders('custom', dateFrom, dateTo);
-      } else {
-        ordersData = await getOrders();
-        if (filter === 'pending') {
-          ordersData = ordersData.filter((o) => isOrderPending(o));
-        }
-      }
       const couriersData = await getCouriers();
+      let ordersData: Order[];
+
+      if (viewMode === 'range' && dateFrom && dateTo) {
+        ordersData = await getCompletedOrders('custom', dateFrom, dateTo);
+        ordersData = filterOrdersByCourier(ordersData, courierFilter);
+      } else {
+        ordersData = await getOrders(buildOrdersListParams(statusFilter, courierFilter));
+      }
+
       setOrders(ordersData);
       setCouriers(couriersData);
     } catch {
@@ -126,7 +143,7 @@ export function OrdersView({
     } finally {
       setLoading(false);
     }
-  }, [filter, dateFrom, dateTo]);
+  }, [viewMode, dateFrom, dateTo, statusFilter, courierFilter]);
 
   useEffect(() => {
     load();
@@ -329,7 +346,7 @@ export function OrdersView({
     const range = getDateRange(preset);
     setDateFrom(range.from);
     setDateTo(range.to);
-    setFilter('range');
+    setViewMode('range');
   };
 
   const estimatedPrice =
@@ -348,45 +365,73 @@ export function OrdersView({
           </Button>
         </div>
 
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-          {(
-            [
-              ['all', 'Hamısı'],
-              ['pending', 'Gözləyən'],
-              ['today_completed', 'Bu gün tamamlanan'],
-              ['range', 'Tarix aralığı'],
-            ] as const
-          ).map(([key, label]) => (
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+            {STATUS_FILTERS.map(({ key, label }) => (
+              <button
+                key={key || 'all'}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(key);
+                  setViewMode('list');
+                }}
+                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  viewMode === 'list' && statusFilter === key
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
             <button
-              key={key}
               type="button"
-              onClick={() => setFilter(key)}
+              onClick={() => setViewMode('range')}
               className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
-                filter === key
+                viewMode === 'range'
                   ? 'bg-sky-600 text-white'
                   : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
               }`}
             >
-              {label}
+              Tarix aralığı
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => applyDatePreset('yesterday')}
-            className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+            <button
+              type="button"
+              onClick={() => applyDatePreset('yesterday')}
+              className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+            >
+              Dünən
+            </button>
+            <button
+              type="button"
+              onClick={() => applyDatePreset('today')}
+              className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+            >
+              Bu gün
+            </button>
+          </div>
+
+          <select
+            value={courierFilter === '' ? '' : String(courierFilter)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === '') setCourierFilter('');
+              else if (v === 'unassigned') setCourierFilter('unassigned');
+              else setCourierFilter(Number(v));
+            }}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 sm:w-auto sm:min-w-[180px]"
           >
-            Dünən
-          </button>
-          <button
-            type="button"
-            onClick={() => applyDatePreset('today')}
-            className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
-          >
-            Bu gün
-          </button>
+            <option value="">Kuryer: Hamısı</option>
+            <option value="unassigned">Kuryersiz</option>
+            {couriers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {getCourierName(c)}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {filter === 'range' && (
+        {viewMode === 'range' && (
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-end">
             <Input
               label="Başlanğıc"
@@ -595,7 +640,7 @@ export function OrdersView({
                   setShowCustomerList(true);
                 }}
                 onFocus={() => setShowCustomerList(true)}
-                placeholder="Ad və ya telefon..."
+                placeholder="Ad, telefon və ya ünvan..."
                 className="w-full rounded-lg border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               />
             </div>
@@ -610,6 +655,11 @@ export function OrdersView({
                     >
                       <span className="font-medium">{getCustomerName(c)}</span>
                       <span className="ml-2 text-slate-500">{formatCustomerPhones(c)}</span>
+                      {c.address?.trim() && (
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {truncateAddress(c.address, 64)}
+                        </p>
+                      )}
                     </button>
                   </li>
                 ))}
@@ -723,6 +773,32 @@ function OrderNotesSection({
       </p>
     </div>
   );
+}
+
+function buildOrdersListParams(
+  status: StatusFilter,
+  courier: CourierFilter
+): OrdersListParams {
+  const params: OrdersListParams = {};
+  if (status === 'today_completed') {
+    params.completedToday = true;
+  } else if (status) {
+    params.status = status;
+  }
+  if (courier === 'unassigned') {
+    params.courier_id = 'unassigned';
+  } else if (courier !== '') {
+    params.courier_id = courier;
+  }
+  return params;
+}
+
+function filterOrdersByCourier(orders: Order[], courier: CourierFilter): Order[] {
+  if (courier === '') return orders;
+  if (courier === 'unassigned') {
+    return orders.filter((o) => o.courier_id == null);
+  }
+  return orders.filter((o) => o.courier_id === courier);
 }
 
 function OrderSearchBar({

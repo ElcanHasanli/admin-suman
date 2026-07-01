@@ -2,6 +2,12 @@ export type UserRole = 'admin' | 'courier';
 
 export type OrderStatus = 'pending' | 'assigned' | 'in_progress' | 'completed';
 
+export interface OrdersListParams {
+  status?: OrderStatus;
+  courier_id?: number | 'unassigned';
+  completedToday?: boolean;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -89,6 +95,7 @@ export interface Courier {
   name?: string;
   email?: string;
   phone?: string;
+  status?: string;
 }
 
 export type PaymentType = 'cash' | 'card' | 'credit';
