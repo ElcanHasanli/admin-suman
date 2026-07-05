@@ -2,6 +2,7 @@ import type {
   Courier,
   Customer,
   CustomerDetailResponse,
+  CustomerOrderPreviewResponse,
   CustomerPayload,
   CustomersListParams,
   CustomersListResponse,
@@ -331,6 +332,12 @@ export async function getCustomers(
 
 export async function getCustomerById(id: number): Promise<CustomerDetailResponse> {
   return request<CustomerDetailResponse>(`/customers/${id}`);
+}
+
+export async function getCustomerOrderPreview(
+  id: number
+): Promise<CustomerOrderPreviewResponse> {
+  return request<CustomerOrderPreviewResponse>(`/customers/${id}/order-preview`);
 }
 
 export async function searchCustomers(q: string): Promise<Customer[]> {

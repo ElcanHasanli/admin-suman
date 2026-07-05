@@ -417,6 +417,17 @@ export function formatWarehouseUpdateSummary(u: WarehouseUpdate): string {
   return parts.length ? `${parts.join(', ')} ${tail}` : tail;
 }
 
+export function getOrderTypeLabel(type?: string): string {
+  switch ((type || 'delivery').toLowerCase()) {
+    case 'pickup':
+      return 'Boş bidon götürmə';
+    case 'delivery':
+      return 'Çatdırılma';
+    default:
+      return type || 'Çatdırılma';
+  }
+}
+
 export function getOrderStatusLabel(status?: string): string {
   switch ((status || '').toLowerCase()) {
     case 'completed':

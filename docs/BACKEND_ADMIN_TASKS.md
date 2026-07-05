@@ -125,3 +125,22 @@ Authorization: Bearer <admin>
 - Cavab: `{ customers: [...] }` və ya massiv
 
 **Frontend:** `searchCustomers(q)` — sifariş modalında; nəticə sırası backend-dən olduğu kimi saxlanılır; dropdown-da ünvan göstərilir.
+
+## 8. Sifariş yaratma (yeni)
+
+`order_type`: `delivery` | `pickup` · `scheduled_date` (YYYY-MM-DD, default bu gün Baku)
+
+```http
+GET /api/customers/:id/order-preview
+POST /api/orders
+```
+
+Preview: `customer` + `last_note` (son sifariş qeydi).
+
+Pickup: `price` avtomatik 0, `bidons_count` = götürüləcək boş bidon.
+
+`debt` POST body-də — müştəri borcu yenilənir (azalanda `debt_payments`).
+
+**Frontend:** Çatdırılma / Boş bidon götürmə tab, tarix picker, borc input, son qeyd readonly, `getCustomerOrderPreview`, `createOrder({ order_type, scheduled_date, debt, notes, ... })`.
+
+Deploy: `npm run db:migrate:order-type` → `pm2 restart api-suman`

@@ -2,6 +2,8 @@ export type UserRole = 'admin' | 'courier';
 
 export type OrderStatus = 'pending' | 'assigned' | 'in_progress' | 'completed';
 
+export type OrderType = 'delivery' | 'pickup';
+
 export interface OrdersListParams {
   status?: OrderStatus;
   courier_id?: number | 'unassigned';
@@ -114,6 +116,8 @@ export interface Order {
   id: number;
   customer_id?: number;
   courier_id?: number;
+  order_type?: OrderType | string;
+  scheduled_date?: string;
   name?: string;
   surname?: string;
   customer_name?: string;
@@ -146,12 +150,28 @@ export interface MarkOrderPaidResponse {
   order_remaining?: number;
 }
 
+export interface CustomerOrderPreviewNote {
+  body: string;
+  created_at?: string;
+  author_role?: OrderNoteAuthorRole;
+  author_name?: string;
+}
+
+export interface CustomerOrderPreviewResponse {
+  customer: Customer;
+  last_note: CustomerOrderPreviewNote | null;
+}
+
 export interface OrderPayload {
   customer_id: number;
   courier_id: number;
+  order_type?: OrderType;
+  scheduled_date?: string;
   bidons_count: number;
-  address: string;
-  price: number;
+  address?: string;
+  price?: number;
+  notes?: string;
+  debt?: number;
 }
 
 export type ExpenseCategory =

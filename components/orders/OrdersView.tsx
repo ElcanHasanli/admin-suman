@@ -15,6 +15,7 @@ import {
   deleteOrder,
   getCouriers,
   getCustomerById,
+  getCustomerOrderPreview,
   getOrderById,
   getOrderNotes,
   getOrders,
@@ -29,7 +30,9 @@ import type {
   Order,
   OrderNote,
   OrderStatus,
+  OrderType,
   OrdersListParams,
+  CustomerOrderPreviewNote,
 } from '@/lib/types';
 import {
   formatCurrency,
@@ -37,9 +40,11 @@ import {
   formatDateTime,
   getCourierName,
   getCustomerActiveBidons,
+  getCustomerDebt,
   getCustomerName,
   getCustomerPrice,
   getDateRange,
+  formatLocalDate,
   getLegacyOrderNoteText,
   getNoteAuthorLabel,
   getOrderBidonCount,
@@ -47,7 +52,9 @@ import {
   getOrderCustomerName,
   getOrderDate,
   getOrderNotesList,
+  getOrderPrice,
   getOrderStatusLabel,
+  getOrderTypeLabel,
   isOrderCompleted,
   truncateAddress,
 } from '@/lib/utils';
@@ -83,6 +90,11 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'today_completed', label: 'Bu gün tamamlanan' },
 ];
 
+const ORDER_TYPE_OPTIONS: { key: OrderType; label: string }[] = [
+  { key: 'delivery', label: 'Çatdırılma' },
+  { key: 'pickup', label: 'Boş bidon götürmə' },
+];
+
 const emptyOrderForm = {
   customerId: '',
   courierId: '',
@@ -112,6 +124,13 @@ export function OrdersView({
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerMatches, setCustomerMatches] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [previewLastNote, setPreviewLastNote] = useState<CustomerOrderPreviewNote | null>(
+    null
+  );
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [orderType, setOrderType] = useState<OrderType>('delivery');
+  const [scheduledDate, setScheduledDate] = useState(() => formatLocalDate());
+  const [debtInput, setDebtInput] = useState('');
   const [showCustomerList, setShowCustomerList] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newNoteBody, setNewNoteBody] = useState('');
@@ -179,16 +198,43 @@ export function OrdersView({
     return list.sort((a, b) => (b.id || 0) - (a.id || 0));
   }, [orders, search]);
 
-  const selectCustomer = (c: Customer) => {
-    setSelectedCustomer(c);
+  const applyCustomerSelection = useCallback((customer: Customer) => {
+    setSelectedCustomer(customer);
     setForm((prev) => ({
       ...prev,
-      customerId: String(c.id),
-      address: c.address || '',
-      bidons: String(getCustomerActiveBidons(c) || 1),
+      customerId: String(customer.id),
+      address: customer.address || '',
+      bidons: String(getCustomerActiveBidons(customer) || 1),
     }));
-    setCustomerSearch(getCustomerName(c));
+    setDebtInput(String(getCustomerDebt(customer)));
+    setCustomerSearch(getCustomerName(customer));
     setShowCustomerList(false);
+  }, []);
+
+  const loadCustomerPreview = useCallback(
+    async (customerId: number) => {
+      setPreviewLoading(true);
+      setPreviewLastNote(null);
+      try {
+        const preview = await getCustomerOrderPreview(customerId);
+        applyCustomerSelection(preview.customer);
+        setPreviewLastNote(preview.last_note);
+      } catch {
+        try {
+          const detail = await getCustomerById(customerId);
+          applyCustomerSelection(detail.customer);
+        } catch {
+          showToast('Müştəri məlumatı yüklənə bilmədi', 'error');
+        }
+      } finally {
+        setPreviewLoading(false);
+      }
+    },
+    [applyCustomerSelection]
+  );
+
+  const selectCustomer = (c: Customer) => {
+    void loadCustomerPreview(c.id);
   };
 
   const loadOrderNotes = useCallback(async (orderId: number) => {
@@ -203,13 +249,21 @@ export function OrdersView({
     }
   }, []);
 
-  const openCreate = () => {
-    setEditOrder(null);
+  const resetCreateForm = () => {
     setForm(emptyOrderForm);
     setCustomerSearch('');
     setSelectedCustomer(null);
+    setPreviewLastNote(null);
+    setOrderType('delivery');
+    setScheduledDate(formatLocalDate());
+    setDebtInput('');
     setNewNoteBody('');
     setOrderNotes([]);
+  };
+
+  const openCreate = () => {
+    setEditOrder(null);
+    resetCreateForm();
     setModalOpen(true);
   };
 
@@ -223,6 +277,11 @@ export function OrdersView({
     });
     setCustomerSearch(getOrderCustomerName(order));
     setSelectedCustomer(null);
+    if (order.customer_id) {
+      void getCustomerById(order.customer_id)
+        .then((detail) => setSelectedCustomer(detail.customer))
+        .catch(() => {});
+    }
     setNewNoteBody('');
     const embedded = getOrderNotesList(order);
     const legacy = getLegacyOrderNoteText(order);
@@ -246,7 +305,7 @@ export function OrdersView({
     void (async () => {
       try {
         const detail = await getCustomerById(prefillCustomerId);
-        selectCustomer(detail.customer);
+        await loadCustomerPreview(detail.customer.id);
         setModalOpen(true);
       } catch {
         showToast('Müştəri yüklənə bilmədi', 'error');
@@ -309,28 +368,64 @@ export function OrdersView({
     }
 
     const bidons = Number(form.bidons);
-    const unitPrice = selectedCustomer ? getCustomerPrice(selectedCustomer) : 0;
-    const payload = {
-      customer_id: Number(form.customerId),
-      courier_id: Number(form.courierId),
-      bidons_count: bidons,
-      address: form.address.trim(),
-      price: unitPrice * bidons,
-    };
+    const isPickup = !editOrder && orderType === 'pickup';
+
+    if (!editOrder && !scheduledDate) {
+      showToast('Tarix seçin', 'error');
+      return;
+    }
+
+    if (!isPickup && !form.address.trim()) {
+      showToast('Ünvan daxil edin', 'error');
+      return;
+    }
 
     setSaving(true);
     try {
       if (editOrder) {
-        await updateOrder(editOrder.id, payload);
+        const price = computeOrderPrice(bidons, selectedCustomer, editOrder);
+        await updateOrder(editOrder.id, {
+          customer_id: Number(form.customerId),
+          courier_id: Number(form.courierId),
+          bidons_count: bidons,
+          address: form.address.trim(),
+          price,
+        });
         if (newNoteBody.trim()) {
           await createOrderNote(editOrder.id, newNoteBody);
         }
         showToast('Sifariş yeniləndi', 'success');
       } else {
-        const created = await createOrder(payload);
-        if (newNoteBody.trim()) {
-          await createOrderNote(created.id, newNoteBody);
+        const noteText = newNoteBody.trim();
+        const debtValue = parseFloat(debtInput);
+        const payload: Parameters<typeof createOrder>[0] = {
+          customer_id: Number(form.customerId),
+          courier_id: Number(form.courierId),
+          order_type: orderType,
+          scheduled_date: scheduledDate,
+          bidons_count: bidons,
+          notes: noteText || undefined,
+        };
+
+        if (selectedCustomer && !Number.isNaN(debtValue)) {
+          payload.debt = debtValue;
         }
+
+        if (isPickup) {
+          payload.price = 0;
+          if (form.address.trim()) payload.address = form.address.trim();
+        } else {
+          const price = computeOrderPrice(bidons, selectedCustomer, null);
+          if (price <= 0) {
+            showToast('Müştəri seçin', 'error');
+            setSaving(false);
+            return;
+          }
+          payload.address = form.address.trim();
+          payload.price = price;
+        }
+
+        await createOrder(payload);
         showToast('Sifariş yaradıldı', 'success');
       }
       setModalOpen(false);
@@ -342,17 +437,17 @@ export function OrdersView({
     }
   };
 
+  const isPickupCreate = !editOrder && orderType === 'pickup';
+  const estimatedPrice = isPickupCreate
+    ? 0
+    : computeOrderPrice(Number(form.bidons) || 0, selectedCustomer, editOrder);
+
   const applyDatePreset = (preset: 'yesterday' | 'today') => {
     const range = getDateRange(preset);
     setDateFrom(range.from);
     setDateTo(range.to);
     setViewMode('range');
   };
-
-  const estimatedPrice =
-    selectedCustomer && form.bidons
-      ? getCustomerPrice(selectedCustomer) * Number(form.bidons)
-      : Number(editOrder?.price) || 0;
 
   return (
     <div className="space-y-6">
@@ -469,7 +564,7 @@ export function OrdersView({
                           {getOrderStatusLabel(order.status)}
                         </Badge>
                       }
-                      subtitle={getOrderCourierName(order)}
+                      subtitle={`${getOrderTypeLabel(order.order_type)} · ${getOrderCourierName(order)}`}
                     >
                       {getOrderCustomerName(order)}
                     </MobileCardTitle>
@@ -481,7 +576,7 @@ export function OrdersView({
                       />
                       <MobileCardField
                         label="Tarix"
-                        value={getOrderDate(order) || '—'}
+                        value={order.scheduled_date || getOrderDate(order) || '—'}
                         className="col-span-2"
                       />
                     </MobileCardGrid>
@@ -554,6 +649,7 @@ export function OrdersView({
                   >
                     <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                       <p className="font-medium text-slate-900">{getOrderCustomerName(order)}</p>
+                      <p className="text-xs text-slate-500">{getOrderTypeLabel(order.order_type)}</p>
                       <p className="text-xs text-slate-500">{order.address}</p>
                       <p className="mt-0.5 text-xs text-slate-400 sm:hidden">
                         {getOrderCourierName(order)}
@@ -567,7 +663,7 @@ export function OrdersView({
                     <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
                       <span className="flex items-center gap-1 whitespace-nowrap">
                         <Calendar size={14} className="shrink-0" />
-                        {getOrderDate(order) || '—'}
+                        {order.scheduled_date || getOrderDate(order) || '—'}
                       </span>
                     </td>
                     <td className="px-3 py-3 sm:px-5 sm:py-3.5">
@@ -627,6 +723,34 @@ export function OrdersView({
         }
       >
         <form id="order-form" onSubmit={handleSubmit} className="space-y-4">
+          {!editOrder && (
+            <>
+              <div className="flex gap-2">
+                {ORDER_TYPE_OPTIONS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setOrderType(key)}
+                    className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                      orderType === key
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <Input
+                label="İcra tarixi"
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                required
+              />
+            </>
+          )}
+
           <div className="relative">
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Müştəri axtar
@@ -667,14 +791,63 @@ export function OrdersView({
             )}
           </div>
 
+          {selectedCustomer && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+              {previewLoading ? (
+                <p className="text-sm text-slate-400">Müştəri məlumatı yüklənir...</p>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      label="Nisyə borcu (₼)"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={debtInput}
+                      onChange={(e) => setDebtInput(e.target.value)}
+                      disabled={!!editOrder}
+                    />
+                    <div className="text-sm text-slate-600">
+                      <p className="font-medium text-slate-700">Aktiv bidon</p>
+                      <p className="mt-1">{getCustomerActiveBidons(selectedCustomer)}</p>
+                    </div>
+                  </div>
+                  {previewLastNote && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Son qeyd
+                        {previewLastNote.author_name
+                          ? ` · ${previewLastNote.author_name}`
+                          : previewLastNote.author_role
+                            ? ` · ${getNoteAuthorLabel(previewLastNote.author_role)}`
+                            : ''}
+                        {previewLastNote.created_at
+                          ? ` · ${formatDateTime(previewLastNote.created_at)}`
+                          : ''}
+                      </p>
+                      <p className="mt-1 rounded-lg bg-white px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-100">
+                        {previewLastNote.body}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
+            {!isPickupCreate && (
+              <Input
+                label="Ünvan"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                required={!isPickupCreate}
+              />
+            )}
             <Input
-              label="Ünvan"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-            />
-            <Input
-              label="Bidon sayı"
+              label={
+                isPickupCreate ? 'Götürüləcək boş bidon' : 'Bidon sayı'
+              }
               type="number"
               min="1"
               value={form.bidons}
@@ -702,8 +875,9 @@ export function OrdersView({
               notes={orderNotes}
               newNoteBody={newNoteBody}
               onNewNoteChange={setNewNoteBody}
+              createMode={!editOrder}
             />
-            {estimatedPrice > 0 && (
+            {!isPickupCreate && estimatedPrice > 0 && (
               <p className="sm:col-span-2 text-sm text-slate-600">
                 Təxmini məbləğ: <strong>{formatCurrency(estimatedPrice)}</strong>
               </p>
@@ -725,54 +899,82 @@ function OrderNotesSection({
   notes,
   newNoteBody,
   onNewNoteChange,
+  createMode = false,
 }: {
   loading: boolean;
   notes: OrderNote[];
   newNoteBody: string;
   onNewNoteChange: (v: string) => void;
+  createMode?: boolean;
 }) {
   return (
     <div className="sm:col-span-2">
       <label className="mb-1.5 block text-sm font-medium text-slate-700">
-        Sifariş qeydləri
+        {createMode ? 'Qeyd' : 'Sifariş qeydləri'}
       </label>
-      {loading ? (
-        <p className="mb-3 text-sm text-slate-400">Qeydlər yüklənir...</p>
-      ) : notes.length > 0 ? (
-        <ul className="mb-3 max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/80 p-3">
-          {notes.map((n) => (
-            <li key={n.id} className="text-sm">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span
-                  className={`rounded-full px-2 py-0.5 font-semibold ${
-                    n.author_role === 'admin'
-                      ? 'bg-sky-100 text-sky-700'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}
-                >
-                  {getNoteAuthorLabel(n.author_role)}
-                </span>
-                {n.created_at && <span>{formatDateTime(n.created_at)}</span>}
-              </div>
-              <p className="mt-1 text-slate-800">{n.body}</p>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mb-3 text-sm text-slate-400">Hələ qeyd yoxdur</p>
+      {!createMode && (
+        <>
+          {loading ? (
+            <p className="mb-3 text-sm text-slate-400">Qeydlər yüklənir...</p>
+          ) : notes.length > 0 ? (
+            <ul className="mb-3 max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/80 p-3">
+              {notes.map((n) => (
+                <li key={n.id} className="text-sm">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span
+                      className={`rounded-full px-2 py-0.5 font-semibold ${
+                        n.author_role === 'admin'
+                          ? 'bg-sky-100 text-sky-700'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {getNoteAuthorLabel(n.author_role)}
+                    </span>
+                    {n.created_at && <span>{formatDateTime(n.created_at)}</span>}
+                  </div>
+                  <p className="mt-1 text-slate-800">{n.body}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mb-3 text-sm text-slate-400">Hələ qeyd yoxdur</p>
+          )}
+        </>
       )}
       <textarea
         value={newNoteBody}
         onChange={(e) => onNewNoteChange(e.target.value)}
-        placeholder="Yeni qeyd (admin təlimatı)..."
+        placeholder={
+          createMode
+            ? 'Kuryer üçün qeyd (məs: zəng et, qapı kodu...)'
+            : 'Yeni qeyd (admin təlimatı)...'
+        }
         rows={3}
         className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
       />
-      <p className="mt-1 text-xs text-slate-400">
-        Saxlayanda yeni qeyd əlavə olunur; köhnə qeydlər silinmir.
-      </p>
+      {!createMode && (
+        <p className="mt-1 text-xs text-slate-400">
+          Saxlayanda yeni qeyd əlavə olunur; köhnə qeydlər silinmir.
+        </p>
+      )}
     </div>
   );
+}
+
+function computeOrderPrice(
+  bidons: number,
+  customer: Customer | null,
+  editOrder: Order | null
+): number {
+  if (!bidons || bidons <= 0) return 0;
+  if (customer) return getCustomerPrice(customer) * bidons;
+  if (editOrder) {
+    const existing = getOrderPrice(editOrder);
+    const existingBidons = getOrderBidonCount(editOrder);
+    if (existingBidons > 0) return (existing / existingBidons) * bidons;
+    return existing;
+  }
+  return 0;
 }
 
 function buildOrdersListParams(
