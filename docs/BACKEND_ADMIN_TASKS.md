@@ -41,7 +41,9 @@ GET /api/history?period=custom&startDate=2026-03-01&endDate=2026-03-31
 | `custom` | `startDate`, `endDate` (YYYY-MM-DD, daxil) |
 
 - `summary.totalExpenses` — kuryer + admin xərcləri
-- `summary.netRevenue` — ümumi gəlir − xərclər
+- `summary.netRevenue` — backend sahəsi; **UI-da istifadə olunmur**
+- **Xalis gəlir (UI):** `getOrderRevenue(summary) − totalExpenses` — borc ödənişləri daxil deyil
+- `summary.debtCollected` — ayrıca «Borc ödənişləri» kartında
 - `expenses[]` — `source`: `courier` \| `admin`
 
 **Frontend:** `resolveApiPeriodParams()` → `getHistory(period, startDate?, endDate?)`. Dashboard: `getHistory('today')`.

@@ -151,14 +151,12 @@ Telefon DB-də normallaşdırılır (`050...` → `994...`). UI-da istədiyiniz 
 | `cardRevenue` | Kart sifarişlərin `amount_paid` cəmi |
 | `creditRevenue` | Ödənilmiş nişə sifarişlərin `price` cəmi |
 | `orderRevenue` / `salesRevenue` | nağd + kart + nişə (**satılan su**) |
-| `debtCollected` | Həmin gün toplanan borc ödənişləri |
-| `totalRevenue` | `orderRevenue + debtCollected` (**ümumi daxilolma**) |
-| `totalExpenses` | Kuryer + admin xərcləri (yanacaq və s.) |
-| **`netRevenue`** | **`totalRevenue − totalExpenses`** (**xalis gəlir**) |
+| `debtCollected` | Həmin gün toplanan borc ödənişləri (**ayrıca göstərilir**) |
+| `totalRevenue` | `orderRevenue + debtCollected` (ümumi daxilolma) |
+| `totalExpenses` | Kuryer + admin xərcləri |
+| **Xalis gəlir (UI)** | **`orderRevenue − totalExpenses`** — borc ödənişləri **daxil deyil** |
 
-**UI:** «Xalis gəlir» kartında **`summary.netRevenue`** göstərin — xərcləri ayrıca toplamayın.
-
-Nümunə: satış 50 AZN, yanacaq 10 AZN → `netRevenue: 40`.
+**Frontend:** «Xalis gəlir» = `getNetRevenue()` → `getOrderRevenue() − getTotalExpenses()`. «Borc ödənişləri» ayrıca kart. Backend `netRevenue` sahəsi UI-da istifadə olunmur.
 
 Ödənilməmiş nişə / qismən ödəniş **`orderRevenue`-ə daxil deyil** (`unpaidCreditAmount`-da).
 

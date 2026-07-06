@@ -77,12 +77,10 @@ export function getLegacyOrderNoteText(order: Order): string {
   return '';
 }
 
+/** Xalis gəlir = satış gəliri − xərclər (borc ödənişləri daxil deyil) */
 export function getNetRevenue(summary?: HistorySummary | null): number {
   if (!summary) return 0;
-  if (typeof summary.netRevenue === 'number') return summary.netRevenue;
-  const revenue = summary.totalRevenue ?? 0;
-  const expenses = summary.totalExpenses ?? 0;
-  return revenue - expenses;
+  return getOrderRevenue(summary) - getTotalExpenses(summary);
 }
 
 export function getDebtCollected(summary?: HistorySummary | null): number {

@@ -194,8 +194,8 @@ export function HistoryView() {
           accent="emerald"
         />
         <StatCard
-          title="Ümumi gəlir"
-          value={loading ? '...' : formatCurrency(summary?.totalRevenue)}
+          title="Satış gəliri"
+          value={loading ? '...' : formatCurrency(getOrderRevenue(summary))}
          
           icon={<Wallet size={20} />}
           accent="sky"
