@@ -95,6 +95,7 @@ export function getTotalExpenses(summary?: HistorySummary | null): number {
 
 export function getOrderRevenue(summary?: HistorySummary | null): number {
   if (typeof summary?.orderRevenue === 'number') return summary.orderRevenue;
+  if (typeof summary?.salesRevenue === 'number') return summary.salesRevenue;
   return summary?.totalRevenue ?? 0;
 }
 

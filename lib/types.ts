@@ -210,6 +210,7 @@ export interface HistorySummary {
   totalOrders: number;
   totalRevenue: number;
   orderRevenue?: number;
+  salesRevenue?: number;
   debtCollected?: number;
   totalExpenses?: number;
   netRevenue?: number;

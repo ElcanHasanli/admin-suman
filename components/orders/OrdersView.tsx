@@ -8,6 +8,7 @@ import {
   CheckCircle,
   Search,
   Calendar,
+  XCircle,
 } from 'lucide-react';
 import {
   createOrder,
@@ -57,9 +58,16 @@ import {
   getOrderScheduledDateDisplay,
   getOrderStatusLabel,
   getOrderTypeLabel,
+  canMarkOrderDebtPaid,
+  formatPaidAt,
+  getOrderAmountPaid,
+  getOrderRemainingAmount,
+  getPaymentTypeLabel,
+  isOrderPaid,
   isOrderCompleted,
   truncateAddress,
 } from '@/lib/utils';
+import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
@@ -139,6 +147,7 @@ export function OrdersView({
   const [orderNotes, setOrderNotes] = useState<OrderNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [payOrder, setPayOrder] = useState<Order | null>(null);
   const { requestConfirm, ConfirmDialog } = useConfirm();
 
   const showToast = (message: string, type: ToastType = 'info') =>
@@ -586,11 +595,26 @@ export function OrdersView({
                           value={formatBakuTime(order.assigned_at_baku)}
                         />
                       )}
+                      {isOrderCompleted(order) && order.payment_type && (
+                        <MobileCardField
+                          label="Ödəniş"
+                          value={<CompletedOrderPayment order={order} />}
+                        />
+                      )}
                     </MobileCardGrid>
                     {order.address && (
                       <p className="mt-2 line-clamp-2 text-xs text-slate-500">{order.address}</p>
                     )}
                     <MobileCardActions>
+                      {canMarkOrderDebtPaid(order) && (
+                        <button
+                          type="button"
+                          onClick={() => setPayOrder(order)}
+                          className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"
+                        >
+                          Borc ödə
+                        </button>
+                      )}
                       {!isOrderCompleted(order) && (
                         <button
                           type="button"
@@ -632,19 +656,20 @@ export function OrdersView({
                 <th className="px-3 py-2.5 sm:px-5 sm:py-3">Qiymət</th>
                 <th className="px-3 py-2.5 sm:px-5 sm:py-3">Tarix</th>
                 <th className="px-3 py-2.5 sm:px-5 sm:py-3">Status</th>
+                <th className="hidden px-3 py-2.5 sm:table-cell sm:px-5 sm:py-3">Ödəniş</th>
                 <th className="px-3 py-2.5 text-right sm:px-5 sm:py-3">Əməliyyat</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-12 text-center text-slate-400 sm:px-5">
+                  <td colSpan={8} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                     Yüklənir...
                   </td>
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-12 text-center text-slate-400 sm:px-5">
+                  <td colSpan={8} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                     Sifariş tapılmadı
                   </td>
                 </tr>
@@ -685,8 +710,25 @@ export function OrdersView({
                         {getOrderStatusLabel(order.status)}
                       </Badge>
                     </td>
+                    <td className="hidden px-3 py-3 sm:table-cell sm:px-5 sm:py-3.5">
+                      {isOrderCompleted(order) && order.payment_type ? (
+                        <CompletedOrderPayment order={order} />
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                       <div className="flex justify-end gap-1">
+                        {canMarkOrderDebtPaid(order) && (
+                          <button
+                            type="button"
+                            onClick={() => setPayOrder(order)}
+                            className="rounded-lg px-2.5 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                            title="Borc ödə"
+                          >
+                            Borc ödə
+                          </button>
+                        )}
                         {!isOrderCompleted(order) && (
                           <button
                             type="button"
@@ -900,6 +942,16 @@ export function OrdersView({
         </form>
       </Modal>
 
+      <OrderDebtPaymentModal
+        open={!!payOrder}
+        order={payOrder}
+        onClose={() => setPayOrder(null)}
+        onSuccess={(message) => {
+          setPayOrder(null);
+          showToast(message, 'success');
+          void load();
+        }}
+      />
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
@@ -1033,6 +1085,43 @@ function OrderSearchBar({
         placeholder="Müştəri və ya kuryer axtar..."
         className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
       />
+    </div>
+  );
+}
+
+function CompletedOrderPayment({ order }: { order: Order }) {
+  const label = getPaymentTypeLabel(order.payment_type);
+  if (isOrderPaid(order)) {
+    return (
+      <div className="space-y-0.5">
+        <span className="text-xs font-medium text-slate-600">{label}</span>
+        <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
+          <CheckCircle size={14} className="shrink-0" />
+          Ödənilib
+        </span>
+        {order.paid_at && (
+          <p className="text-[11px] text-slate-400">{formatPaidAt(order.paid_at)}</p>
+        )}
+      </div>
+    );
+  }
+
+  const remaining = getOrderRemainingAmount(order);
+  const paid = getOrderAmountPaid(order);
+
+  return (
+    <div className="space-y-0.5">
+      <span className="text-xs font-medium text-slate-600">{label}</span>
+      {paid > 0 ? (
+        <span className="text-xs font-medium text-amber-700">
+          Qismən · Qalan {formatCurrency(remaining)}
+        </span>
+      ) : (
+        <span className="flex items-center gap-1 text-xs font-semibold text-red-600">
+          <XCircle size={14} className="shrink-0" />
+          Ödənilməyib
+        </span>
+      )}
     </div>
   );
 }

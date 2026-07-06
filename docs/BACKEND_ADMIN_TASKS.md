@@ -154,3 +154,8 @@ Pickup: `price` avtomatik 0, `bidons_count` = götürüləcək boş bidon.
 | `completed_at_baku` | Tamamlanma vaxtı (Baku) |
 
 **Frontend:** `formatCalendarDate`, `formatBakuDateTime`, `getOrderScheduledDateDisplay`, `getOrderAssignedTimeDisplay`, `getOrderCompletedTimeDisplay`.
+
+## 10. SaaS / multi-şirkət
+
+Lisenziya kodu ilə login, şirkət izolyasiyası, `mark-paid`, tarixçə `netRevenue` — tam sənəd: **`docs/BACKEND_SAAS_MIGRATION.md`**.
+
