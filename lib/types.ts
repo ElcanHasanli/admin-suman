@@ -133,7 +133,9 @@ export interface Order {
   notes?: OrderNote[] | string;
   created_at?: string;
   assigned_at?: string;
+  assigned_at_baku?: string;
   completed_at?: string;
+  completed_at_baku?: string;
   payment_type?: PaymentType | string;
   amount_paid?: number | string;
   is_paid?: boolean;

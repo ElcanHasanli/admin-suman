@@ -7,9 +7,10 @@ import {
   getNetRevenue,
   getOrderAmountPaid,
   getOrderBidonCount,
+  getOrderCompletedTimeDisplay,
   getOrderCourierName,
   getOrderCustomerName,
-  getOrderDate,
+  getOrderScheduledDateDisplay,
   getOrderPaidLabel,
   getOrderPrice,
   getOrderRemainingAmount,
@@ -61,7 +62,8 @@ export async function buildHistoryExcelBlob(
     'Ödəniş növü',
     'Status',
     'Ödəndi',
-    'Tarix',
+    'İcra günü',
+    'Tamamlanma',
   ];
   const orderRows = orders.map((o) => [
     o.id,
@@ -74,7 +76,8 @@ export async function buildHistoryExcelBlob(
     getPaymentTypeLabel(o.payment_type),
     getOrderStatusLabel(o.status),
     getOrderPaidLabel(o),
-    getOrderDate(o),
+    getOrderScheduledDateDisplay(o),
+    getOrderCompletedTimeDisplay(o),
   ]);
   XLSX.utils.book_append_sheet(
     wb,

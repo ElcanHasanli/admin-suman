@@ -143,4 +143,14 @@ Pickup: `price` avtomatik 0, `bidons_count` = götürüləcək boş bidon.
 
 **Frontend:** Çatdırılma / Boş bidon götürmə tab, tarix picker, borc input, son qeyd readonly, `getCustomerOrderPreview`, `createOrder({ order_type, scheduled_date, debt, notes, ... })`.
 
-Deploy: `npm run db:migrate:order-type` → `pm2 restart api-suman`
+## 9. Tarix sahələri (Baku)
+
+`scheduled_date` — həmişə `YYYY-MM-DD` string (təqvim tarixi, timezone yoxdur). `new Date(scheduled_date)` ilə parse etməyin.
+
+| Sahə | İstifadə |
+|------|----------|
+| `scheduled_date` | İcra günü göstərmək (formatCalendarDate) |
+| `assigned_at_baku` | Təyin vaxtı (ISO +04:00) |
+| `completed_at_baku` | Tamamlanma vaxtı (Baku) |
+
+**Frontend:** `formatCalendarDate`, `formatBakuDateTime`, `getOrderScheduledDateDisplay`, `getOrderAssignedTimeDisplay`, `getOrderCompletedTimeDisplay`.

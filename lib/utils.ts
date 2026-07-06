@@ -313,8 +313,58 @@ export function normalizeDate(dateString?: string): string {
   return dateString.slice(0, 10);
 }
 
+/** YYYY-MM-DD təqvim tarixi — new Date() ilə parse etməyin (UTC sürüşməsi) */
+export function formatCalendarDate(dateStr?: string): string {
+  if (!dateStr) return '—';
+  const raw = dateStr.trim().slice(0, 10);
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return raw || '—';
+  return `${m[3]}.${m[2]}.${m[1]}`;
+}
+
+/** ISO vaxt (assigned_at_baku, completed_at_baku) — Baku timezone */
+export function formatBakuDateTime(iso?: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso.slice(0, 16);
+  return d.toLocaleString('az-AZ', {
+    timeZone: 'Asia/Baku',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function formatBakuTime(iso?: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('az-AZ', {
+    timeZone: 'Asia/Baku',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** İcra günü — scheduled_date (təqvim); fallback köhnə sifarişlər */
+export function getOrderScheduledDateDisplay(order: Order): string {
+  if (order.scheduled_date) return formatCalendarDate(order.scheduled_date);
+  return formatCalendarDate(normalizeDate(order.completed_at || order.created_at));
+}
+
+export function getOrderAssignedTimeDisplay(order: Order): string {
+  return formatBakuDateTime(order.assigned_at_baku || order.assigned_at);
+}
+
+export function getOrderCompletedTimeDisplay(order: Order): string {
+  return formatBakuDateTime(order.completed_at_baku || order.completed_at);
+}
+
+/** @deprecated use getOrderScheduledDateDisplay */
 export function getOrderDate(order: Order): string {
-  return normalizeDate(order.completed_at || order.created_at);
+  return getOrderScheduledDateDisplay(order);
 }
 
 export function isDateInRange(dateStr: string | undefined, from: string, to: string): boolean {

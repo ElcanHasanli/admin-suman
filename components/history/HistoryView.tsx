@@ -35,9 +35,10 @@ import {
   getDebtCollected,
   getNetRevenue,
   getOrderBidonCount,
+  getOrderCompletedTimeDisplay,
   getOrderCourierName,
   getOrderCustomerName,
-  getOrderDate,
+  getOrderScheduledDateDisplay,
   getOrderRevenue,
   getOrderStatusLabel,
   formatPaidAt,
@@ -765,7 +766,13 @@ function HistoryTable({
                     getOrderRemainingAmount(order) > 0 ? 'text-red-600' : 'text-emerald-600'
                   }
                 />
-                <MobileCardField label="Tarix" value={getOrderDate(order)} />
+                <MobileCardField label="İcra günü" value={getOrderScheduledDateDisplay(order)} />
+                {(order.completed_at_baku || order.completed_at) && (
+                  <MobileCardField
+                    label="Tamamlanma"
+                    value={getOrderCompletedTimeDisplay(order)}
+                  />
+                )}
                 <MobileCardField label="Ödəniş" value={<PaymentTypeCell order={order} />} />
               </MobileCardGrid>
               <div className="mt-2">
@@ -838,7 +845,14 @@ function HistoryTable({
                   <OrderPaidStatus order={order} />
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
-                  {getOrderDate(order)}
+                  <span className="flex flex-col gap-0.5">
+                    <span>{getOrderScheduledDateDisplay(order)}</span>
+                    {(order.completed_at_baku || order.completed_at) && (
+                      <span className="text-xs text-slate-400">
+                        {getOrderCompletedTimeDisplay(order)}
+                      </span>
+                    )}
+                  </span>
                 </td>
                 <td className="hidden px-3 py-3 sm:table-cell sm:px-5 sm:py-3.5">
                   <Badge variant={orderStatusVariant(order.status)}>

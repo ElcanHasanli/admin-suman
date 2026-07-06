@@ -37,6 +37,7 @@ import type {
 import {
   formatCurrency,
   formatCustomerPhones,
+  formatBakuTime,
   formatDateTime,
   getCourierName,
   getCustomerActiveBidons,
@@ -48,11 +49,12 @@ import {
   getLegacyOrderNoteText,
   getNoteAuthorLabel,
   getOrderBidonCount,
+  getOrderCompletedTimeDisplay,
   getOrderCourierName,
   getOrderCustomerName,
-  getOrderDate,
   getOrderNotesList,
   getOrderPrice,
+  getOrderScheduledDateDisplay,
   getOrderStatusLabel,
   getOrderTypeLabel,
   isOrderCompleted,
@@ -575,10 +577,15 @@ export function OrdersView({
                         value={formatCurrency(order.price)}
                       />
                       <MobileCardField
-                        label="Tarix"
-                        value={order.scheduled_date || getOrderDate(order) || '—'}
-                        className="col-span-2"
+                        label="İcra günü"
+                        value={getOrderScheduledDateDisplay(order)}
                       />
+                      {order.assigned_at_baku && (
+                        <MobileCardField
+                          label="Təyin vaxtı"
+                          value={formatBakuTime(order.assigned_at_baku)}
+                        />
+                      )}
                     </MobileCardGrid>
                     {order.address && (
                       <p className="mt-2 line-clamp-2 text-xs text-slate-500">{order.address}</p>
@@ -661,9 +668,16 @@ export function OrdersView({
                     <td className="px-3 py-3 font-semibold sm:px-5 sm:py-3.5">{getOrderBidonCount(order)}</td>
                     <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{formatCurrency(order.price)}</td>
                     <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
-                      <span className="flex items-center gap-1 whitespace-nowrap">
-                        <Calendar size={14} className="shrink-0" />
-                        {order.scheduled_date || getOrderDate(order) || '—'}
+                      <span className="flex flex-col gap-0.5 whitespace-nowrap">
+                        <span className="flex items-center gap-1">
+                          <Calendar size={14} className="shrink-0" />
+                          {getOrderScheduledDateDisplay(order)}
+                        </span>
+                        {order.assigned_at_baku && (
+                          <span className="pl-5 text-xs text-slate-400">
+                            {formatBakuTime(order.assigned_at_baku)}
+                          </span>
+                        )}
                       </span>
                     </td>
                     <td className="px-3 py-3 sm:px-5 sm:py-3.5">
