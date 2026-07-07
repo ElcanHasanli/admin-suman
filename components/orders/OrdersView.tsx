@@ -65,6 +65,7 @@ import {
   getPaymentTypeLabel,
   isOrderPaid,
   isOrderCompleted,
+  normalizeDate,
   truncateAddress,
 } from '@/lib/utils';
 import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
@@ -287,6 +288,14 @@ export function OrdersView({
       address: order.address || '',
     });
     setCustomerSearch(getOrderCustomerName(order));
+    setOrderType(
+      order.order_type === 'pickup' || order.order_type === 'delivery'
+        ? order.order_type
+        : 'delivery'
+    );
+    setScheduledDate(
+      order.scheduled_date ? normalizeDate(order.scheduled_date) : formatLocalDate()
+    );
     setSelectedCustomer(null);
     if (order.customer_id) {
       void getCustomerById(order.customer_id)
@@ -379,9 +388,9 @@ export function OrdersView({
     }
 
     const bidons = Number(form.bidons);
-    const isPickup = !editOrder && orderType === 'pickup';
+    const isPickup = orderType === 'pickup';
 
-    if (!editOrder && !scheduledDate) {
+    if (!scheduledDate) {
       showToast('Tarix seçin', 'error');
       return;
     }
@@ -394,12 +403,14 @@ export function OrdersView({
     setSaving(true);
     try {
       if (editOrder) {
-        const price = computeOrderPrice(bidons, selectedCustomer, editOrder);
+        const price = isPickup ? 0 : computeOrderPrice(bidons, selectedCustomer, editOrder);
         await updateOrder(editOrder.id, {
           customer_id: Number(form.customerId),
           courier_id: Number(form.courierId),
+          order_type: orderType,
+          scheduled_date: scheduledDate,
           bidons_count: bidons,
-          address: form.address.trim(),
+          address: isPickup ? form.address.trim() || undefined : form.address.trim(),
           price,
         });
         if (newNoteBody.trim()) {
@@ -448,10 +459,11 @@ export function OrdersView({
     }
   };
 
-  const isPickupCreate = !editOrder && orderType === 'pickup';
-  const estimatedPrice = isPickupCreate
+  const isPickup = orderType === 'pickup';
+  const estimatedPrice = isPickup
     ? 0
     : computeOrderPrice(Number(form.bidons) || 0, selectedCustomer, editOrder);
+  const editCompleted = !!editOrder && isOrderCompleted(editOrder);
 
   const applyDatePreset = (preset: 'yesterday' | 'today') => {
     const range = getDateRange(preset);
@@ -779,32 +791,35 @@ export function OrdersView({
         }
       >
         <form id="order-form" onSubmit={handleSubmit} className="space-y-4">
-          {!editOrder && (
-            <>
-              <div className="flex gap-2">
-                {ORDER_TYPE_OPTIONS.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setOrderType(key)}
-                    className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                      orderType === key
-                        ? 'bg-sky-600 text-white shadow-sm'
-                        : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <Input
-                label="İcra tarixi"
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                required
-              />
-            </>
+          <div className="flex gap-2">
+            {ORDER_TYPE_OPTIONS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setOrderType(key)}
+                disabled={editCompleted}
+                className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  orderType === key
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <Input
+            label="İcra tarixi"
+            type="date"
+            value={scheduledDate}
+            onChange={(e) => setScheduledDate(e.target.value)}
+            disabled={editCompleted}
+            required
+          />
+          {editCompleted && (
+            <p className="text-xs text-amber-700">
+              Tamamlanmış sifarişdə növ və icra tarixi dəyişdirilmir.
+            </p>
           )}
 
           <div className="relative">
@@ -892,18 +907,16 @@ export function OrdersView({
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {!isPickupCreate && (
+            {!isPickup && (
               <Input
                 label="Ünvan"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
-                required={!isPickupCreate}
+                required
               />
             )}
             <Input
-              label={
-                isPickupCreate ? 'Götürüləcək boş bidon' : 'Bidon sayı'
-              }
+              label={isPickup ? 'Götürüləcək boş bidon' : 'Bidon sayı'}
               type="number"
               min="1"
               value={form.bidons}
@@ -933,7 +946,7 @@ export function OrdersView({
               onNewNoteChange={setNewNoteBody}
               createMode={!editOrder}
             />
-            {!isPickupCreate && estimatedPrice > 0 && (
+            {!isPickup && estimatedPrice > 0 && (
               <p className="sm:col-span-2 text-sm text-slate-600">
                 Təxmini məbləğ: <strong>{formatCurrency(estimatedPrice)}</strong>
               </p>

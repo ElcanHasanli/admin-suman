@@ -145,6 +145,8 @@ Pickup: `price` avtomatik 0, `bidons_count` = götürüləcək boş bidon.
 
 **Frontend:** Çatdırılma / Boş bidon götürmə tab, tarix picker, borc input, son qeyd readonly, `getCustomerOrderPreview`, `createOrder({ order_type, scheduled_date, debt, notes, ... })`.
 
+**Redaktə:** `updateOrder({ order_type, scheduled_date, courier_id, bidons_count, address, price })` — tamamlanmış sifarişdə növ/tarix UI-da kilidlidir.
+
 ## 9. Tarix sahələri (Baku)
 
 `scheduled_date` — həmişə `YYYY-MM-DD` string (təqvim tarixi, timezone yoxdur). `new Date(scheduled_date)` ilə parse etməyin.
