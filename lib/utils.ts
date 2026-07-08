@@ -196,6 +196,32 @@ export function getOrderRemainingAmount(order: Order): number {
   return Math.max(0, getOrderPrice(order) - getOrderAmountPaid(order));
 }
 
+export function getOrderDebtPaidAtCompletion(order: Order): number {
+  return parseMoney(order.debt_paid_at_completion);
+}
+
+export function getOrderTotalCollected(order: Order): number {
+  if (order.total_collected != null && order.total_collected !== '') {
+    return parseMoney(order.total_collected);
+  }
+  const orderPaid = getOrderAmountPaid(order);
+  const debtPaid = getOrderDebtPaidAtCompletion(order);
+  if (orderPaid > 0 || debtPaid > 0) return orderPaid + debtPaid;
+  return 0;
+}
+
+/** Kuryer tamamlamada: «20 AZN (sifariş 10 + borc 10)» */
+export function formatOrderCollectionSummary(order: Order): string | null {
+  const total = getOrderTotalCollected(order);
+  if (total <= 0) return null;
+  const orderPart = getOrderAmountPaid(order);
+  const debtPart = getOrderDebtPaidAtCompletion(order);
+  if (debtPart > 0) {
+    return `${formatCurrency(total)} (sifariş ${formatCurrency(orderPart)} + borc ${formatCurrency(debtPart)})`;
+  }
+  return formatCurrency(total);
+}
+
 export function getOrderCustomerDebt(order: Order): number | null {
   if (order.customer_debt == null || order.customer_debt === '') return null;
   return parseMoney(order.customer_debt);

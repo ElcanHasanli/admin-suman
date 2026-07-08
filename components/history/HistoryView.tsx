@@ -55,7 +55,9 @@ import {
   getOrderCustomerDebt,
   canMarkOrderDebtPaid,
   getOrderPrice,
+  formatOrderCollectionSummary,
 } from '@/lib/utils';
+import { OrderCollectionSummary } from '@/components/orders/OrderPaymentDetails';
 import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -692,8 +694,9 @@ function OrderPriceCell({ order }: { order: Order }) {
   return (
     <div>
       <p className="font-medium">{formatCurrency(price)}</p>
+      <OrderCollectionSummary order={order} />
       {paid > 0 && (
-        <p className="mt-0.5 text-xs text-emerald-600">Ödənilib: {formatCurrency(paid)}</p>
+        <p className="mt-0.5 text-xs text-emerald-600">Sifarişə: {formatCurrency(paid)}</p>
       )}
       {!isOrderPaid(order) && remaining > 0 && (
         <p className="mt-0.5 text-xs font-medium text-red-600">Qalan: {formatCurrency(remaining)}</p>
@@ -756,7 +759,7 @@ function HistoryTable({
                   value={formatCurrency(getOrderPrice(order))}
                 />
                 <MobileCardField
-                  label="Ödənilib"
+                  label="Sifarişə ödənilib"
                   value={formatCurrency(getOrderAmountPaid(order))}
                 />
                 <MobileCardField
@@ -765,6 +768,10 @@ function HistoryTable({
                   valueClassName={
                     getOrderRemainingAmount(order) > 0 ? 'text-red-600' : 'text-emerald-600'
                   }
+                />
+                <MobileCardField
+                  label="Yığılan"
+                  value={formatOrderCollectionSummary(order) || '—'}
                 />
                 <MobileCardField label="İcra günü" value={getOrderScheduledDateDisplay(order)} />
                 {(order.completed_at_baku || order.completed_at) && (

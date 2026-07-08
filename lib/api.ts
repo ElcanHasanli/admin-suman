@@ -477,6 +477,8 @@ export function getMarkPaidErrorMessage(err: unknown): string {
     const code = (err.data as { code?: string } | undefined)?.code;
     if (code === 'ORDER_ALREADY_PAID') return 'Sifariş artıq tam ödənilib';
     if (code === 'AMOUNT_EXCEEDS_ORDER') return 'Məbləğ sifariş qalığından böyükdür';
+    if (code === 'AMOUNT_EXCEEDS_PAYABLE')
+      return 'Məbləğ tamamlama zamanı ödənilə biləcək həddən böyükdür';
     return err.message;
   }
   return err instanceof Error ? err.message : 'Ödəniş qeydə alınmadı';

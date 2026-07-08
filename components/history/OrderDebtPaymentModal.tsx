@@ -6,12 +6,10 @@ import { getMarkPaidErrorMessage, markOrderPaid } from '@/lib/api';
 import {
   formatCurrency,
   formatMarkPaidSuccessMessage,
-  getOrderAmountPaid,
-  getOrderCustomerDebt,
   getOrderCustomerName,
-  getOrderPrice,
   getOrderRemainingAmount,
 } from '@/lib/utils';
+import { OrderPaymentBreakdown } from '@/components/orders/OrderPaymentDetails';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -35,9 +33,6 @@ export function OrderDebtPaymentModal({
   const [error, setError] = useState<string | null>(null);
 
   const remaining = order ? getOrderRemainingAmount(order) : 0;
-  const price = order ? getOrderPrice(order) : 0;
-  const paidSoFar = order ? getOrderAmountPaid(order) : 0;
-  const customerDebt = order ? getOrderCustomerDebt(order) : null;
 
   useEffect(() => {
     if (!open) {
@@ -97,7 +92,7 @@ export function OrderDebtPaymentModal({
           onClick={() => void submitFull()}
           className="w-full"
         >
-          Tam ödədi ({formatCurrency(remaining)})
+          Tam ödə ({formatCurrency(remaining)})
         </Button>
       ) : (
         <Button
@@ -117,31 +112,12 @@ export function OrderDebtPaymentModal({
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Borc ödənişi" size="md" footer={footer}>
+    <Modal open={open} onClose={onClose} title="Sifariş qalığını ödə" size="md" footer={footer}>
       <div className="space-y-4">
-        <div className="rounded-lg bg-slate-50 p-3 text-sm">
-          <p className="font-semibold text-slate-900">{getOrderCustomerName(order)}</p>
-          {customerDebt != null && (
-            <p className="mt-1 text-slate-600">
-              Müştəri ümumi borcu:{' '}
-              <strong className={customerDebt > 0 ? 'text-red-600' : 'text-slate-800'}>
-                {formatCurrency(customerDebt)}
-              </strong>
-            </p>
-          )}
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="rounded-lg bg-white p-2 ring-1 ring-slate-100">
-              <p className="text-slate-400">Qiymət</p>
-              <p className="mt-0.5 font-semibold text-slate-900">{formatCurrency(price)}</p>
-            </div>
-            <div className="rounded-lg bg-white p-2 ring-1 ring-slate-100">
-              <p className="text-slate-400">Ödənilib</p>
-              <p className="mt-0.5 font-semibold text-emerald-700">{formatCurrency(paidSoFar)}</p>
-            </div>
-            <div className="rounded-lg bg-white p-2 ring-1 ring-slate-100">
-              <p className="text-slate-400">Qalan</p>
-              <p className="mt-0.5 font-semibold text-red-600">{formatCurrency(remaining)}</p>
-            </div>
+        <div className="rounded-lg bg-slate-50 p-3">
+          <p className="text-sm font-semibold text-slate-900">{getOrderCustomerName(order)}</p>
+          <div className="mt-3">
+            <OrderPaymentBreakdown order={order} />
           </div>
         </div>
 
@@ -155,7 +131,7 @@ export function OrderDebtPaymentModal({
                 : 'bg-white text-slate-600 ring-1 ring-slate-200'
             }`}
           >
-            Tam ödədi
+            Tam ödə
           </button>
           <button
             type="button"
@@ -166,7 +142,7 @@ export function OrderDebtPaymentModal({
                 : 'bg-white text-slate-600 ring-1 ring-slate-200'
             }`}
           >
-            Qismən ödədi
+            Qismən ödə
           </button>
         </div>
 

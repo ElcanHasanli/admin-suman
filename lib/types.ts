@@ -138,6 +138,8 @@ export interface Order {
   completed_at_baku?: string;
   payment_type?: PaymentType | string;
   amount_paid?: number | string;
+  debt_paid_at_completion?: number | string;
+  total_collected?: number | string;
   is_paid?: boolean;
   paid_at?: string | null;
   remaining_amount?: number | string;

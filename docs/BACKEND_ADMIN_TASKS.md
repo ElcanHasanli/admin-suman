@@ -163,3 +163,16 @@ Pickup: `price` avtomatik 0, `bidons_count` = götürüləcək boş bidon.
 
 Lisenziya kodu ilə login, şirkət izolyasiyası, `mark-paid`, tarixçə `netRevenue` — tam sənəd: **`docs/BACKEND_SAAS_MIGRATION.md`**.
 
+## 11. Sifariş borcu ödənişi (tam / qismən)
+
+`PUT /api/orders/:id/mark-paid` — yalnız **sifariş qalığı** (`remaining_amount`).
+
+| Sahə | Mənası |
+|------|--------|
+| `amount_paid` | Sifariş qiymətindən ödənilən |
+| `debt_paid_at_completion` | Tamamlamada köhnə borcdan ödənilən |
+| `total_collected` | Kuryerin aldığı ümumi (`amount_paid + debt_paid_at_completion`) |
+| `remaining_amount` | `max(0, price - amount_paid)` |
+
+**Frontend:** `OrderPaymentDetails`, `formatOrderCollectionSummary`, `canMarkOrderDebtPaid` (`remaining_amount > 0`), `OrderDebtPaymentModal`.
+
