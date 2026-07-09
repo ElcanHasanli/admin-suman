@@ -167,12 +167,25 @@ Lisenziya kodu ilə login, şirkət izolyasiyası, `mark-paid`, tarixçə `netRe
 
 `PUT /api/orders/:id/mark-paid` — yalnız **sifariş qalığı** (`remaining_amount`).
 
-| Sahə | Mənası |
-|------|--------|
-| `amount_paid` | Sifariş qiymətindən ödənilən |
-| `debt_paid_at_completion` | Tamamlamada köhnə borcdan ödənilən |
-| `total_collected` | Kuryerin aldığı ümumi (`amount_paid + debt_paid_at_completion`) |
-| `remaining_amount` | `max(0, price - amount_paid)` |
+**Frontend:** `OrderPaymentDetails`, `formatOrderCollectionSummary`, `OrderDebtPaymentModal`.
 
-**Frontend:** `OrderPaymentDetails`, `formatOrderCollectionSummary`, `canMarkOrderDebtPaid` (`remaining_amount > 0`), `OrderDebtPaymentModal`.
+## 12. Tarixçə dashboard (7 qutu)
+
+`GET /api/history/dashboard?period=&courier_id=` — `dashboard.sales`, `debt_given`, `credit`, `prepaid`, `courier_balance`, `expenses`, `net_balance`.
+
+Period: `today` | `yesterday` | `week` | `month` | `custom`.
+
+**Frontend:** `HistoryDashboardCards`, `HistoryPeriodButtons`, kuryer filteri, Satış/Xərclər modalları.
+
+## 13. Sifariş əlavələri və ödənilib
+
+`POST /api/orders` — `unit_price`, `extras[]`, `is_prepaid`, `prepaid_amount`.
+
+**Frontend:** sifariş yaratma modalında əlavələr + «Əvvəlcədən ödənilib» checkbox.
+
+## 14. Borclu müştərilər
+
+`GET /api/customers/debtors` · `POST /api/customers/:id/pay-debt`
+
+**Frontend:** `/dashboard/customers/debtors` — `DebtorsView`, `CustomerPayDebtModal`.
 

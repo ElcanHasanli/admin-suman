@@ -3,24 +3,19 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Download,
-  TrendingUp,
-  TrendingDown,
   CheckCircle,
-  Banknote,
-  CreditCard,
-  CircleDollarSign,
   XCircle,
-  Wallet,
   Plus,
 } from 'lucide-react';
 import {
   createExpense,
   getHistory,
+  getHistoryDashboard,
   getMigrationErrorHint,
   isBackendMigrationError,
 } from '@/lib/api';
 import { buildHistoryExcelBlob } from '@/lib/historyExport';
-import type { DebtPayment, Expense, HistorySummary, Order } from '@/lib/types';
+import type { Courier, DebtPayment, Expense, HistoryDashboard, HistorySummary, Order } from '@/lib/types';
 import {
   downloadBlob,
   getExportErrorMessage,
@@ -29,22 +24,18 @@ import {
 import {
   formatCurrency,
   formatDateTime,
-  resolveApiPeriodParams,
+  resolveHistoryPeriodParams,
   resolveExportFilenameDates,
   getExpenseCategoryLabel,
-  getDebtCollected,
-  getNetRevenue,
+  getCourierName,
   getOrderBidonCount,
   getOrderCompletedTimeDisplay,
   getOrderCourierName,
   getOrderCustomerName,
   getOrderScheduledDateDisplay,
-  getOrderRevenue,
   getOrderStatusLabel,
   formatPaidAt,
-  getCreditRevenue,
   getPaymentTypeLabel,
-  getTotalExpenses,
   getUnpaidCreditDebt,
   isOrderPaid,
   parseExpenseAmount,
@@ -61,7 +52,7 @@ import { OrderCollectionSummary } from '@/components/orders/OrderPaymentDetails'
 import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card, StatCard } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
@@ -76,35 +67,45 @@ import {
   MobileCardTitle,
   MobileEmpty,
 } from '@/components/ui/MobileCards';
+import { HistoryDashboardCards } from '@/components/history/HistoryDashboardCards';
 import {
-  DateRangePresetButtons,
-  useDateRangeState,
-} from '@/components/ui/DateRangePresets';
+  HistoryPeriodButtons,
+  useHistoryPeriodState,
+} from '@/components/history/HistoryPeriodPresets';
 
 export function HistoryView() {
+  const [dashboard, setDashboard] = useState<HistoryDashboard | null>(null);
+  const [couriers, setCouriers] = useState<Courier[]>([]);
+  const [courierFilter, setCourierFilter] = useState<number | ''>('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [debtPayments, setDebtPayments] = useState<DebtPayment[]>([]);
   const [summary, setSummary] = useState<HistorySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const { preset, setPreset, dateFrom, setDateFrom, dateTo, setDateTo } =
-    useDateRangeState('today');
+    useHistoryPeriodState('today');
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { period, startDate, endDate } = resolveApiPeriodParams(
+      const { period, startDate, endDate } = resolveHistoryPeriodParams(
         preset,
         dateFrom,
         dateTo
       );
-      const data = await getHistory(period, startDate, endDate);
-      setOrders(data.orders);
-      setSummary(data.summary);
-      setExpenses(data.expenses ?? []);
-      setDebtPayments(data.debtPayments ?? []);
+      const courierId = courierFilter === '' ? undefined : courierFilter;
+      const [dashData, histData] = await Promise.all([
+        getHistoryDashboard(period, startDate, endDate, courierId),
+        getHistory(period, startDate, endDate, courierId),
+      ]);
+      setDashboard(dashData.dashboard);
+      setCouriers(dashData.couriers);
+      setOrders(histData.orders);
+      setSummary(histData.summary);
+      setExpenses(histData.expenses ?? []);
+      setDebtPayments(histData.debtPayments ?? []);
     } catch (err) {
       setToast({
         message: isBackendMigrationError(err)
@@ -117,7 +118,7 @@ export function HistoryView() {
     } finally {
       setLoading(false);
     }
-  }, [preset, dateFrom, dateTo]);
+  }, [preset, dateFrom, dateTo, courierFilter]);
 
   useEffect(() => {
     load();
@@ -125,17 +126,18 @@ export function HistoryView() {
 
   const handleExport = async () => {
     try {
-      const { period, startDate, endDate } = resolveApiPeriodParams(
+      const { period, startDate, endDate } = resolveHistoryPeriodParams(
         preset,
         dateFrom,
         dateTo
       );
+      const courierId = courierFilter === '' ? undefined : courierFilter;
       const { startDate: fileFrom, endDate: fileTo } = resolveExportFilenameDates(
         preset,
         dateFrom,
         dateTo
       );
-      const data = await getHistory(period, startDate, endDate);
+      const data = await getHistory(period, startDate, endDate, courierId);
       const rangeLabel =
         fileFrom === fileTo ? fileFrom : `${fileFrom} — ${fileTo}`;
       const blob = await buildHistoryExcelBlob(data, rangeLabel);
@@ -150,15 +152,26 @@ export function HistoryView() {
     () => getUnpaidCreditDebt(orders, summary),
     [orders, summary]
   );
-  const creditRevenue = useMemo(
-    () => getCreditRevenue(orders, summary),
-    [orders, summary]
-  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <DateRangePresetButtons preset={preset} onPresetChange={setPreset} />
+        <HistoryPeriodButtons preset={preset} onPresetChange={setPreset} />
+        <select
+          value={courierFilter === '' ? '' : String(courierFilter)}
+          onChange={(e) => {
+            const v = e.target.value;
+            setCourierFilter(v === '' ? '' : Number(v));
+          }}
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 sm:w-auto sm:min-w-[180px]"
+        >
+          <option value="">Kuryer: Hamısı</option>
+          {couriers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {getCourierName(c)}
+            </option>
+          ))}
+        </select>
         <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
           <Button
             variant="secondary"
@@ -187,60 +200,7 @@ export function HistoryView() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard
-          title="Xalis gəlir"
-          value={loading ? '...' : formatCurrency(getNetRevenue(summary))}
-          
-          icon={<TrendingUp size={20} />}
-          accent="emerald"
-        />
-        <StatCard
-          title="Satış gəliri"
-          value={loading ? '...' : formatCurrency(getOrderRevenue(summary))}
-         
-          icon={<Wallet size={20} />}
-          accent="sky"
-        />
-        <StatCard
-          title="Borc ödənişləri"
-          value={loading ? '...' : formatCurrency(getDebtCollected(summary))}
-          subtitle={loading ? undefined : `${debtPayments.length} qeyd`}
-          icon={<Banknote size={20} />}
-          accent="amber"
-        />
-        <StatCard
-          title="Ümumi xərclər"
-          value={loading ? '...' : formatCurrency(getTotalExpenses(summary))}
-          
-          icon={<TrendingDown size={20} />}
-          accent="rose"
-        />
-        <StatCard
-          title="Tamamlanmış sifariş"
-          value={loading ? '...' : summary?.totalOrders ?? 0}
-          icon={<CheckCircle size={20} />}
-          accent="violet"
-        />
-        <StatCard
-          title="Nağd"
-          value={loading ? '...' : formatCurrency(summary?.cashRevenue)}
-          icon={<Banknote size={20} />}
-          accent="amber"
-        />
-        <StatCard
-          title="Kart"
-          value={loading ? '...' : formatCurrency(summary?.cardRevenue)}
-          icon={<CreditCard size={20} />}
-          accent="violet"
-        />
-        <StatCard
-          title="Nisyə (gəlir)"
-          value={loading ? '...' : formatCurrency(creditRevenue)}
-          icon={<CircleDollarSign size={20} />}
-          accent="violet"
-        />
-      </div>
+      <HistoryDashboardCards dashboard={dashboard} expenses={expenses} loading={loading} />
 
       {unpaidCredit.amount > 0 && (
         <p className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-800 ring-1 ring-rose-100">

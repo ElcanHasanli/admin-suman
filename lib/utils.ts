@@ -2,8 +2,10 @@ import type {
   Customer,
   CustomerPayload,
   DateRangePreset,
+  HistoryPeriod,
   HistorySummary,
   Order,
+  OrderExtraPayload,
   OrderNote,
   WarehouseUpdate,
 } from './types';
@@ -420,6 +422,18 @@ export function getDateRange(preset: 'yesterday' | 'today'): { from: string; to:
 
 export type ApiPeriod = 'today' | 'yesterday' | 'custom';
 
+/** Tarixçə period — today | yesterday | week | month | custom */
+export function resolveHistoryPeriodParams(
+  preset: HistoryPeriod,
+  dateFrom: string,
+  dateTo: string
+): { period: HistoryPeriod; startDate?: string; endDate?: string } {
+  if (preset === 'custom' && dateFrom && dateTo) {
+    return { period: 'custom', startDate: dateFrom, endDate: dateTo };
+  }
+  return { period: preset };
+}
+
 /** Backend period: today | yesterday | custom (+ startDate/endDate) — Asia/Baku server tərəfində */
 export function resolveApiPeriodParams(
   preset: DateRangePreset,
@@ -436,10 +450,12 @@ export function resolveApiPeriodParams(
 
 /** Excel fayl adı üçün — today/yesterday-də API startDate/endDate göndərmir */
 export function resolveExportFilenameDates(
-  preset: DateRangePreset,
+  preset: DateRangePreset | HistoryPeriod,
   dateFrom: string,
   dateTo: string
 ): { startDate: string; endDate: string } {
+  if (preset === 'week') return { startDate: 'hefte', endDate: formatLocalDate() };
+  if (preset === 'month') return { startDate: 'ay', endDate: formatLocalDate() };
   if (dateFrom && dateTo) return { startDate: dateFrom, endDate: dateTo };
   const range = getDateRange(preset === 'yesterday' ? 'yesterday' : 'today');
   return { startDate: range.from, endDate: range.to };
@@ -460,6 +476,28 @@ const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
 export function getExpenseCategoryLabel(category?: string): string {
   if (!category) return '—';
   return EXPENSE_CATEGORY_LABELS[category.toLowerCase()] ?? category;
+}
+
+const ORDER_EXTRA_LABELS: Record<string, string> = {
+  pump: 'Pompa',
+  dispenser: 'Dispenser',
+  fine: 'Cərimə',
+  other: 'Digər',
+};
+
+export function getOrderExtraLabel(type?: string): string {
+  if (!type) return 'Digər';
+  return ORDER_EXTRA_LABELS[type.toLowerCase()] ?? type;
+}
+
+export function calcOrderWaterTotal(unitPrice: number, bidons: number): number {
+  return unitPrice * bidons;
+}
+
+export function calcOrderExtrasTotal(
+  extras: Pick<OrderExtraPayload, 'amount' | 'quantity'>[]
+): number {
+  return extras.reduce((sum, e) => sum + e.amount * (e.quantity ?? 1), 0);
 }
 
 export function isAdminExpense(expense: { source?: string; courier_id?: number | null }): boolean {

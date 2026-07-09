@@ -5,6 +5,7 @@ import {
   History,
   Warehouse,
   Bell,
+  CircleDollarSign,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -43,6 +44,12 @@ export const dashboardNav: DashboardNavItem[] = [
     icon: Users,
   },
   {
+    href: '/dashboard/customers/debtors',
+    label: 'Borclu müştərilər',
+    shortLabel: 'Borclu',
+    icon: CircleDollarSign,
+  },
+  {
     href: '/dashboard/orders',
     label: 'Sifarişlər',
     shortLabel: 'Sifariş',
@@ -66,8 +73,12 @@ export function isNavActive(
   if (item.href === '/dashboard/customers') {
     return (
       pathname === '/dashboard/customers' ||
-      pathname.startsWith('/dashboard/customers/')
+      (pathname.startsWith('/dashboard/customers/') &&
+        !pathname.startsWith('/dashboard/customers/debtors'))
     );
+  }
+  if (item.href === '/dashboard/customers/debtors') {
+    return pathname.startsWith('/dashboard/customers/debtors');
   }
   return pathname.startsWith(item.href);
 }

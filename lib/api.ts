@@ -10,7 +10,11 @@ import type {
   Expense,
   ExpensePayload,
   ExpensePeriod,
+  HistoryDashboardResponse,
+  HistoryPeriod,
   HistoryResponse,
+  DebtorsListResponse,
+  PayCustomerDebtResponse,
   Order,
   OrderNote,
   OrderPayload,
@@ -346,6 +350,40 @@ export async function searchCustomers(q: string): Promise<Customer[]> {
   return unwrapList<Customer>(data, ['customers']);
 }
 
+export async function getDebtors(
+  params: { page?: number; limit?: number; q?: string } = {}
+): Promise<DebtorsListResponse> {
+  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.max(1, Math.min(params.limit ?? 20, 100));
+  const searchParams = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  const q = params.q?.trim();
+  if (q) searchParams.set('q', q);
+  return request<DebtorsListResponse>(`/customers/debtors?${searchParams}`);
+}
+
+export async function payCustomerDebt(
+  customerId: number,
+  payload?: { amount?: number }
+): Promise<PayCustomerDebtResponse> {
+  return request<PayCustomerDebtResponse>(`/customers/${customerId}/pay-debt`, {
+    method: 'POST',
+    body: JSON.stringify(payload ?? {}),
+  });
+}
+
+export function getPayDebtErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const code = (err.data as { code?: string } | undefined)?.code;
+    if (code === 'NO_DEBT') return 'Müştərinin borcu yoxdur';
+    if (code === 'AMOUNT_EXCEEDS_DEBT') return 'Məbləğ borcdan böyükdür';
+    return err.message;
+  }
+  return err instanceof Error ? err.message : 'Borc ödənişi qeydə alınmadı';
+}
+
 export async function createCustomer(payload: CustomerPayload): Promise<Customer> {
   return request<Customer>('/customers', {
     method: 'POST',
@@ -505,30 +543,56 @@ function normalizeHistoryResponse(data: HistoryApiResponse): HistoryResponse {
   return { ...data, expenses, debtPayments };
 }
 
-export async function getHistory(
-  period: 'today' | 'yesterday' | 'custom',
+function buildHistorySearchParams(
+  period: HistoryPeriod,
   startDate?: string,
-  endDate?: string
-): Promise<HistoryResponse> {
+  endDate?: string,
+  courierId?: number
+): URLSearchParams {
   const params = new URLSearchParams({ period });
   if (period === 'custom' && startDate && endDate) {
     params.set('startDate', startDate);
     params.set('endDate', endDate);
   }
+  if (courierId) params.set('courier_id', String(courierId));
+  return params;
+}
+
+export async function getHistoryDashboard(
+  period: HistoryPeriod,
+  startDate?: string,
+  endDate?: string,
+  courierId?: number
+): Promise<HistoryDashboardResponse> {
+  const params = buildHistorySearchParams(period, startDate, endDate, courierId);
+  const data = await request<HistoryDashboardResponse & { couriers?: Courier[] }>(
+    `/history/dashboard?${params}`
+  );
+  return {
+    period: data.period,
+    dashboard: data.dashboard,
+    couriers: data.couriers ?? [],
+  };
+}
+
+export async function getHistory(
+  period: HistoryPeriod,
+  startDate?: string,
+  endDate?: string,
+  courierId?: number
+): Promise<HistoryResponse> {
+  const params = buildHistorySearchParams(period, startDate, endDate, courierId);
   const data = await request<HistoryApiResponse>(`/history?${params}`);
   return normalizeHistoryResponse(data);
 }
 
 export async function exportHistoryExcel(
-  period: 'today' | 'yesterday' | 'custom',
+  period: HistoryPeriod,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  courierId?: number
 ): Promise<Blob> {
-  const params = new URLSearchParams({ period });
-  if (period === 'custom' && startDate && endDate) {
-    params.set('startDate', startDate);
-    params.set('endDate', endDate);
-  }
+  const params = buildHistorySearchParams(period, startDate, endDate, courierId);
   return requestBlob(`/history/export?${params}`);
 }
 

@@ -4,6 +4,27 @@ export type OrderStatus = 'pending' | 'assigned' | 'in_progress' | 'completed';
 
 export type OrderType = 'delivery' | 'pickup';
 
+export type OrderExtraType = 'pump' | 'dispenser' | 'fine' | 'other';
+
+export interface OrderExtra {
+  type: OrderExtraType | string;
+  label?: string;
+  amount: number | string;
+  quantity?: number;
+  description?: string;
+}
+
+export interface OrderExtraPayload {
+  type: OrderExtraType | string;
+  amount: number;
+  quantity?: number;
+  description?: string;
+}
+
+export type HistoryPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
+
+export type ApiPeriod = 'today' | 'yesterday' | 'custom';
+
 export interface OrdersListParams {
   status?: OrderStatus;
   courier_id?: number | 'unassigned';
@@ -126,8 +147,12 @@ export interface Order {
   customer?: { name?: string; surname?: string; phone?: string; display_name?: string };
   courier_name?: string;
   bidons_count?: number;
+  unit_price?: number | string;
   address?: string;
   price?: number | string;
+  extras?: OrderExtra[];
+  is_prepaid?: boolean;
+  prepaid_amount?: number | string;
   status?: OrderStatus | string;
   /** V2: qeydlər massivi; köhnə API: tək sətir string */
   notes?: OrderNote[] | string;
@@ -172,8 +197,12 @@ export interface OrderPayload {
   order_type?: OrderType;
   scheduled_date?: string;
   bidons_count: number;
+  unit_price?: number;
   address?: string;
   price?: number;
+  extras?: OrderExtraPayload[];
+  is_prepaid?: boolean;
+  prepaid_amount?: number;
   notes?: string;
   debt?: number;
 }
@@ -206,6 +235,88 @@ export interface ExpensePayload {
   description: string;
   category?: ExpenseCategory | string;
   source?: ExpenseSource;
+}
+
+export interface HistoryDashboardSalesWater {
+  unit_price: number;
+  bidons: number;
+  amount: number;
+}
+
+export interface HistoryDashboardSalesExtra {
+  type: string;
+  label: string;
+  count: number;
+  amount: number;
+}
+
+export interface HistoryDashboardSales {
+  total: number;
+  water_total: number;
+  extras_total: number;
+  water: HistoryDashboardSalesWater[];
+  extras: HistoryDashboardSalesExtra[];
+  by_courier?: { courier_id?: number; courier_name?: string; total?: number }[];
+  orders?: Order[];
+}
+
+export interface HistoryDashboardDebtGiven {
+  total: number;
+  count: number;
+  customers: {
+    customer: string;
+    customer_id?: number;
+    amount: number;
+    order_id: number | null;
+  }[];
+}
+
+export interface HistoryDashboardAmountBox {
+  total: number;
+  count?: number;
+}
+
+export interface HistoryDashboardCourierBalance {
+  total: number;
+  formula?: {
+    sales?: number;
+    debt_given?: number;
+    credit?: number;
+    prepaid?: number;
+    partial_unpaid?: number;
+  };
+}
+
+export interface HistoryDashboard {
+  sales: HistoryDashboardSales;
+  debt_given: HistoryDashboardDebtGiven;
+  credit: HistoryDashboardAmountBox;
+  prepaid: HistoryDashboardAmountBox;
+  courier_balance: HistoryDashboardCourierBalance;
+  expenses: HistoryDashboardAmountBox;
+  net_balance: HistoryDashboardAmountBox;
+}
+
+export interface HistoryDashboardResponse {
+  period: string;
+  dashboard: HistoryDashboard;
+  couriers: Courier[];
+}
+
+export interface DebtorsListResponse {
+  customers: Customer[];
+  total: number;
+  total_debt: number;
+  page: number;
+  limit: number;
+}
+
+export interface PayCustomerDebtResponse {
+  customer_id: number;
+  paid_amount: number;
+  previous_debt: number;
+  customer_debt: number;
+  debt_payment: DebtPayment;
 }
 
 export interface HistorySummary {

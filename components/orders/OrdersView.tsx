@@ -32,6 +32,8 @@ import type {
   OrderNote,
   OrderStatus,
   OrderType,
+  OrderExtraPayload,
+  OrderExtraType,
   OrdersListParams,
   CustomerOrderPreviewNote,
 } from '@/lib/types';
@@ -59,6 +61,8 @@ import {
   getOrderStatusLabel,
   getOrderTypeLabel,
   canMarkOrderDebtPaid,
+  calcOrderExtrasTotal,
+  calcOrderWaterTotal,
   formatPaidAt,
   getOrderAmountPaid,
   getOrderRemainingAmount,
@@ -106,6 +110,31 @@ const ORDER_TYPE_OPTIONS: { key: OrderType; label: string }[] = [
   { key: 'pickup', label: 'Boş bidon götürmə' },
 ];
 
+const ORDER_EXTRA_OPTIONS: { key: OrderExtraType; label: string }[] = [
+  { key: 'pump', label: 'Pompa' },
+  { key: 'dispenser', label: 'Dispenser' },
+  { key: 'fine', label: 'Cərimə' },
+  { key: 'other', label: 'Digər' },
+];
+
+type ExtraFormRow = {
+  id: string;
+  type: OrderExtraType;
+  amount: string;
+  quantity: string;
+  description: string;
+};
+
+function newExtraRow(): ExtraFormRow {
+  return {
+    id: Math.random().toString(36).slice(2),
+    type: 'pump',
+    amount: '',
+    quantity: '1',
+    description: '',
+  };
+}
+
 const emptyOrderForm = {
   customerId: '',
   courierId: '',
@@ -142,6 +171,9 @@ export function OrdersView({
   const [orderType, setOrderType] = useState<OrderType>('delivery');
   const [scheduledDate, setScheduledDate] = useState(() => formatLocalDate());
   const [debtInput, setDebtInput] = useState('');
+  const [extras, setExtras] = useState<ExtraFormRow[]>([]);
+  const [isPrepaid, setIsPrepaid] = useState(false);
+  const [prepaidAmount, setPrepaidAmount] = useState('');
   const [showCustomerList, setShowCustomerList] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newNoteBody, setNewNoteBody] = useState('');
@@ -269,6 +301,9 @@ export function OrdersView({
     setOrderType('delivery');
     setScheduledDate(formatLocalDate());
     setDebtInput('');
+    setExtras([]);
+    setIsPrepaid(false);
+    setPrepaidAmount('');
     setNewNoteBody('');
     setOrderNotes([]);
   };
@@ -437,14 +472,33 @@ export function OrdersView({
           payload.price = 0;
           if (form.address.trim()) payload.address = form.address.trim();
         } else {
-          const price = computeOrderPrice(bidons, selectedCustomer, null);
-          if (price <= 0) {
+          const unitPrice = selectedCustomer ? getCustomerPrice(selectedCustomer) : 0;
+          const waterTotal = calcOrderWaterTotal(unitPrice, bidons);
+          const validExtras: OrderExtraPayload[] = extras
+            .filter((e) => parseFloat(e.amount) > 0)
+            .map((e) => ({
+              type: e.type,
+              amount: parseFloat(e.amount),
+              quantity: parseInt(e.quantity, 10) || 1,
+              ...(e.description.trim() ? { description: e.description.trim() } : {}),
+            }));
+          const extrasTotal = calcOrderExtrasTotal(validExtras);
+          const totalPrice = waterTotal + extrasTotal;
+          if (totalPrice <= 0 && unitPrice <= 0) {
             showToast('Müştəri seçin', 'error');
             setSaving(false);
             return;
           }
+          payload.unit_price = unitPrice;
+          if (validExtras.length) payload.extras = validExtras;
           payload.address = form.address.trim();
-          payload.price = price;
+          payload.price = totalPrice;
+          if (isPrepaid) {
+            payload.is_prepaid = true;
+            const prepaid = parseFloat(prepaidAmount);
+            payload.prepaid_amount =
+              !Number.isNaN(prepaid) && prepaid > 0 ? prepaid : totalPrice;
+          }
         }
 
         await createOrder(payload);
@@ -460,9 +514,21 @@ export function OrdersView({
   };
 
   const isPickup = orderType === 'pickup';
+  const unitPrice = selectedCustomer ? getCustomerPrice(selectedCustomer) : 0;
+  const bidonsCount = Number(form.bidons) || 0;
+  const createExtrasTotal = calcOrderExtrasTotal(
+    extras
+      .filter((e) => parseFloat(e.amount) > 0)
+      .map((e) => ({
+        amount: parseFloat(e.amount) || 0,
+        quantity: parseInt(e.quantity, 10) || 1,
+      }))
+  );
   const estimatedPrice = isPickup
     ? 0
-    : computeOrderPrice(Number(form.bidons) || 0, selectedCustomer, editOrder);
+    : editOrder
+      ? computeOrderPrice(bidonsCount, selectedCustomer, editOrder)
+      : calcOrderWaterTotal(unitPrice, bidonsCount) + createExtrasTotal;
   const editCompleted = !!editOrder && isOrderCompleted(editOrder);
 
   const applyDatePreset = (preset: 'yesterday' | 'today') => {
@@ -946,9 +1012,135 @@ export function OrdersView({
               onNewNoteChange={setNewNoteBody}
               createMode={!editOrder}
             />
+            {!editOrder && !isPickup && (
+              <div className="sm:col-span-2 space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-800">Əlavələr (pompa, cərimə…)</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setExtras((prev) => [...prev, newExtraRow()])}
+                    className="text-xs"
+                  >
+                    Əlavə et
+                  </Button>
+                </div>
+                {extras.length === 0 ? (
+                  <p className="text-xs text-slate-500">Pompa, dispenser və ya cərimə əlavə edin.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {extras.map((row) => (
+                      <li
+                        key={row.id}
+                        className="grid gap-2 rounded-lg bg-white p-3 ring-1 ring-slate-100 sm:grid-cols-4"
+                      >
+                        <select
+                          value={row.type}
+                          onChange={(e) =>
+                            setExtras((prev) =>
+                              prev.map((r) =>
+                                r.id === row.id
+                                  ? { ...r, type: e.target.value as OrderExtraType }
+                                  : r
+                              )
+                            )
+                          }
+                          className="rounded-lg border border-slate-200 px-2 py-2 text-sm"
+                        >
+                          {ORDER_EXTRA_OPTIONS.map((o) => (
+                            <option key={o.key} value={o.key}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                        <Input
+                          label="Məbləğ"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.amount}
+                          onChange={(e) =>
+                            setExtras((prev) =>
+                              prev.map((r) =>
+                                r.id === row.id ? { ...r, amount: e.target.value } : r
+                              )
+                            )
+                          }
+                        />
+                        <Input
+                          label="Say"
+                          type="number"
+                          min="1"
+                          value={row.quantity}
+                          onChange={(e) =>
+                            setExtras((prev) =>
+                              prev.map((r) =>
+                                r.id === row.id ? { ...r, quantity: e.target.value } : r
+                              )
+                            )
+                          }
+                        />
+                        <div className="flex items-end gap-2">
+                          <Input
+                            label="Qeyd"
+                            value={row.description}
+                            onChange={(e) =>
+                              setExtras((prev) =>
+                                prev.map((r) =>
+                                  r.id === row.id ? { ...r, description: e.target.value } : r
+                                )
+                              )
+                            }
+                            className="flex-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExtras((prev) => prev.filter((r) => r.id !== row.id))
+                            }
+                            className="mb-0.5 shrink-0 rounded-lg px-2 py-2 text-xs text-red-600 hover:bg-red-50"
+                          >
+                            Sil
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={isPrepaid}
+                    onChange={(e) => setIsPrepaid(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  Əvvəlcədən ödənilib (kuryer təkrar pul almır)
+                </label>
+                {isPrepaid && (
+                  <Input
+                    label="Ödənilmiş məbləğ (boş = ümumi qiymət)"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={prepaidAmount}
+                    onChange={(e) => setPrepaidAmount(e.target.value)}
+                  />
+                )}
+              </div>
+            )}
             {!isPickup && estimatedPrice > 0 && (
               <p className="sm:col-span-2 text-sm text-slate-600">
                 Təxmini məbləğ: <strong>{formatCurrency(estimatedPrice)}</strong>
+                {!editOrder && unitPrice > 0 && (
+                  <span className="text-slate-500">
+                    {' '}
+                    (su {formatCurrency(calcOrderWaterTotal(unitPrice, bidonsCount))}
+                    {createExtrasTotal > 0
+                      ? ` + əlavə ${formatCurrency(createExtrasTotal)}`
+                      : ''}
+                    )
+                  </span>
+                )}
               </p>
             )}
           </div>

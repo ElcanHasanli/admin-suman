@@ -18,12 +18,14 @@ export function StatCard({
   subtitle,
   icon,
   accent = 'sky',
+  onClick,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
   icon: React.ReactNode;
   accent?: 'sky' | 'violet' | 'emerald' | 'amber' | 'rose';
+  onClick?: () => void;
 }) {
   const accents = {
     sky: 'from-sky-500 to-cyan-500',
@@ -33,8 +35,8 @@ export function StatCard({
     rose: 'from-rose-500 to-pink-500',
   };
 
-  return (
-    <Card className="overflow-hidden">
+  const inner = (
+    <Card className={`overflow-hidden ${onClick ? 'transition hover:ring-2 hover:ring-sky-200' : ''}`}>
       <div className="flex items-start justify-between gap-3 p-4 sm:p-5">
         <StatContent title={title} value={value} subtitle={subtitle} />
         <div
@@ -45,6 +47,16 @@ export function StatCard({
       </div>
     </Card>
   );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="w-full text-left">
+        {inner}
+      </button>
+    );
+  }
+
+  return inner;
 }
 
 function StatContent({
