@@ -10,8 +10,9 @@ import type {
   WarehouseUpdate,
 } from './types';
 
-export function formatCurrency(amount: number | string | undefined): string {
+export function formatCurrency(amount: number | string | undefined | null): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount ?? 0;
+  if (!Number.isFinite(num)) return '₼0.00';
   return `₼${num.toFixed(2)}`;
 }
 

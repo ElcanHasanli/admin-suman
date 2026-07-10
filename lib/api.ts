@@ -10,6 +10,7 @@ import type {
   Expense,
   ExpensePayload,
   ExpensePeriod,
+  HistoryDashboard,
   HistoryDashboardResponse,
   HistoryPeriod,
   HistoryResponse,
@@ -543,6 +544,53 @@ function normalizeHistoryResponse(data: HistoryApiResponse): HistoryResponse {
   return { ...data, expenses, debtPayments };
 }
 
+/** API natamam/köhnə cavab gətirəndə UI crash olmasın */
+export function normalizeHistoryDashboard(
+  raw?: Partial<HistoryDashboard> | null
+): HistoryDashboard {
+  const sales = raw?.sales;
+  return {
+    sales: {
+      total: Number(sales?.total) || 0,
+      water_total: Number(sales?.water_total) || 0,
+      extras_total: Number(sales?.extras_total) || 0,
+      water: Array.isArray(sales?.water) ? sales.water : [],
+      extras: Array.isArray(sales?.extras) ? sales.extras : [],
+      by_courier: Array.isArray(sales?.by_courier) ? sales.by_courier : [],
+      orders: Array.isArray(sales?.orders) ? sales.orders : [],
+    },
+    debt_given: {
+      total: Number(raw?.debt_given?.total) || 0,
+      count: Number(raw?.debt_given?.count) || 0,
+      customers: Array.isArray(raw?.debt_given?.customers)
+        ? raw.debt_given.customers
+        : [],
+    },
+    credit: {
+      total: Number(raw?.credit?.total) || 0,
+      count: Number(raw?.credit?.count) || 0,
+      orders: Array.isArray(raw?.credit?.orders) ? raw.credit.orders : [],
+    },
+    prepaid: {
+      total: Number(raw?.prepaid?.total) || 0,
+      count: Number(raw?.prepaid?.count) || 0,
+      orders: Array.isArray(raw?.prepaid?.orders) ? raw.prepaid.orders : [],
+    },
+    courier_balance: {
+      total: Number(raw?.courier_balance?.total) || 0,
+      formula: raw?.courier_balance?.formula,
+    },
+    expenses: {
+      total: Number(raw?.expenses?.total) || 0,
+      count: Number(raw?.expenses?.count) || 0,
+    },
+    net_balance: {
+      total: Number(raw?.net_balance?.total) || 0,
+      count: Number(raw?.net_balance?.count) || 0,
+    },
+  };
+}
+
 function buildHistorySearchParams(
   period: HistoryPeriod,
   startDate?: string,
@@ -570,9 +618,9 @@ export async function getHistoryDashboard(
   );
   return {
     period: data.period,
-    dashboard: data.dashboard,
+    dashboard: normalizeHistoryDashboard(data.dashboard),
     couriers: data.couriers ?? [],
-    by_courier: data.by_courier,
+    by_courier: Array.isArray(data.by_courier) ? data.by_courier : [],
   };
 }
 

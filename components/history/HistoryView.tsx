@@ -9,10 +9,12 @@ import {
 } from 'lucide-react';
 import {
   createExpense,
+  getCouriers,
   getHistory,
   getHistoryDashboard,
   getMigrationErrorHint,
   isBackendMigrationError,
+  normalizeHistoryDashboard,
 } from '@/lib/api';
 import { buildHistoryExcelBlob } from '@/lib/historyExport';
 import type {
@@ -105,17 +107,56 @@ export function HistoryView() {
         dateTo
       );
       const courierId = courierFilter === '' ? undefined : courierFilter;
-      const [dashData, histData] = await Promise.all([
+
+      const [dashRes, histRes] = await Promise.allSettled([
         getHistoryDashboard(period, startDate, endDate, courierId),
         getHistory(period, startDate, endDate, courierId),
       ]);
-      setDashboard(dashData.dashboard);
-      setByCourier(dashData.by_courier ?? histData.by_courier ?? []);
-      setCouriers(dashData.couriers);
-      setOrders(histData.orders);
-      setSummary(histData.summary);
-      setExpenses(histData.expenses ?? []);
-      setDebtPayments(histData.debtPayments ?? []);
+
+      if (histRes.status === 'fulfilled') {
+        const histData = histRes.value;
+        setOrders(histData.orders ?? []);
+        setSummary(histData.summary ?? null);
+        setExpenses(histData.expenses ?? []);
+        setDebtPayments(histData.debtPayments ?? []);
+        if (histData.dashboard) {
+          setDashboard(normalizeHistoryDashboard(histData.dashboard));
+        }
+        if (histData.by_courier) {
+          setByCourier(histData.by_courier);
+        }
+      } else {
+        setOrders([]);
+        setSummary(null);
+        setExpenses([]);
+        setDebtPayments([]);
+      }
+
+      if (dashRes.status === 'fulfilled') {
+        setDashboard(dashRes.value.dashboard);
+        setByCourier(dashRes.value.by_courier ?? []);
+        setCouriers(dashRes.value.couriers ?? []);
+      } else {
+        setDashboard((prev) => prev ?? normalizeHistoryDashboard(null));
+        try {
+          const list = await getCouriers();
+          setCouriers(list);
+        } catch {
+          setCouriers([]);
+        }
+      }
+
+      if (histRes.status === 'rejected' && dashRes.status === 'rejected') {
+        const err = histRes.reason;
+        setToast({
+          message: isBackendMigrationError(err)
+            ? getMigrationErrorHint()
+            : err instanceof Error
+              ? err.message
+              : 'Tarixçə yüklənə bilmədi',
+          type: 'error',
+        });
+      }
     } catch (err) {
       setToast({
         message: isBackendMigrationError(err)
@@ -125,6 +166,7 @@ export function HistoryView() {
             : 'Tarixçə yüklənə bilmədi',
         type: 'error',
       });
+      setDashboard(normalizeHistoryDashboard(null));
     } finally {
       setLoading(false);
     }
