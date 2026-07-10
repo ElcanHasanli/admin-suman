@@ -175,7 +175,11 @@ Lisenziya kodu ilə login, şirkət izolyasiyası, `mark-paid`, tarixçə `netRe
 
 Period: `today` | `yesterday` | `week` | `month` | `custom`.
 
-**Frontend:** `HistoryDashboardCards`, `HistoryPeriodButtons`, kuryer filteri, Satış/Xərclər modalları.
+**Nisyə (`credit`):** yalnız `payment_type=credit` və hələ ödənilməmiş (`is_paid: false`, `remaining_amount > 0`). Borc ödəniləndə qutudan çıxır.
+
+**Kuryer üzrə:** filter olmadan `by_courier[]` — hər kuryer üçün eyni 7 qutu.
+
+**Frontend:** `HistoryDashboardCards` (klik → Satış / Borc / Nisyə / Ödənilib / Kuryerdə qalıq / Xərclər modalları), `HistoryPeriodButtons`, kuryer filteri.
 
 ## 13. Sifariş əlavələri və ödənilib
 

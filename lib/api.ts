@@ -572,6 +572,7 @@ export async function getHistoryDashboard(
     period: data.period,
     dashboard: data.dashboard,
     couriers: data.couriers ?? [],
+    by_courier: data.by_courier,
   };
 }
 

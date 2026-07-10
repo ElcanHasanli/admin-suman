@@ -274,6 +274,8 @@ export interface HistoryDashboardDebtGiven {
 export interface HistoryDashboardAmountBox {
   total: number;
   count?: number;
+  /** Nisyə: ödənilməmiş sifarişlər; digər qutularda opsional siyahı */
+  orders?: Order[];
 }
 
 export interface HistoryDashboardCourierBalance {
@@ -297,10 +299,18 @@ export interface HistoryDashboard {
   net_balance: HistoryDashboardAmountBox;
 }
 
+/** Filter olmadan — hər kuryer üçün eyni 7 qutu */
+export interface HistoryDashboardByCourier {
+  courier_id: number;
+  courier_name?: string;
+  dashboard: HistoryDashboard;
+}
+
 export interface HistoryDashboardResponse {
   period: string;
   dashboard: HistoryDashboard;
   couriers: Courier[];
+  by_courier?: HistoryDashboardByCourier[];
 }
 
 export interface DebtorsListResponse {
@@ -337,6 +347,8 @@ export interface HistorySummary {
 export interface HistoryResponse {
   period: string;
   summary: HistorySummary;
+  dashboard?: HistoryDashboard;
+  by_courier?: HistoryDashboardByCourier[];
   orders: Order[];
   expenses?: Expense[];
   debtPayments?: DebtPayment[];

@@ -15,7 +15,15 @@ import {
   isBackendMigrationError,
 } from '@/lib/api';
 import { buildHistoryExcelBlob } from '@/lib/historyExport';
-import type { Courier, DebtPayment, Expense, HistoryDashboard, HistorySummary, Order } from '@/lib/types';
+import type {
+  Courier,
+  DebtPayment,
+  Expense,
+  HistoryDashboard,
+  HistoryDashboardByCourier,
+  HistorySummary,
+  Order,
+} from '@/lib/types';
 import {
   downloadBlob,
   getExportErrorMessage,
@@ -75,6 +83,7 @@ import {
 
 export function HistoryView() {
   const [dashboard, setDashboard] = useState<HistoryDashboard | null>(null);
+  const [byCourier, setByCourier] = useState<HistoryDashboardByCourier[]>([]);
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [courierFilter, setCourierFilter] = useState<number | ''>('');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -101,6 +110,7 @@ export function HistoryView() {
         getHistory(period, startDate, endDate, courierId),
       ]);
       setDashboard(dashData.dashboard);
+      setByCourier(dashData.by_courier ?? histData.by_courier ?? []);
       setCouriers(dashData.couriers);
       setOrders(histData.orders);
       setSummary(histData.summary);
@@ -200,12 +210,20 @@ export function HistoryView() {
         </Card>
       )}
 
-      <HistoryDashboardCards dashboard={dashboard} expenses={expenses} loading={loading} />
+      <HistoryDashboardCards
+        dashboard={dashboard}
+        expenses={expenses}
+        loading={loading}
+        byCourier={byCourier}
+        showByCourier={courierFilter === ''}
+      />
 
       {unpaidCredit.amount > 0 && (
         <p className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-800 ring-1 ring-rose-100">
-          Nisyə borcu: {formatCurrency(unpaidCredit.amount)}
-          {unpaidCredit.count > 0 ? ` (${unpaidCredit.count} ödənilməmiş sifariş)` : ''}
+          Nisyə (ödənilməmiş): {formatCurrency(unpaidCredit.amount)}
+          {unpaidCredit.count > 0 ? ` (${unpaidCredit.count} sifariş)` : ''}
+          {' — '}
+          borc ödəniləndə bu məbləğ azalır
         </p>
       )}
 

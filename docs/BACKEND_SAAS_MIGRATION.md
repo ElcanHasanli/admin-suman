@@ -16,7 +16,7 @@ Bu sənəd **Admin panel** frontend komandası üçündür. Backend multi-şirk�
 | Register səhifəsi yoxdur | ✅ |
 | Tarixçə: `summary.netRevenue` | ✅ `getNetRevenue()` |
 | Tarixçə: `unpaidCreditAmount` | ✅ banner |
-| Nişə `mark-paid` | ✅ Tarixçə + Sifarişlər (tamamlanan) |
+| Nisyə `mark-paid` | ✅ Tarixçə + Sifarişlər (tamamlanan) |
 | 409 telefon xətası | ✅ `CustomerFormModal` |
 | `is_paid` / `paid_at` | ✅ `lib/utils.ts`, tarixçə UI |
 
