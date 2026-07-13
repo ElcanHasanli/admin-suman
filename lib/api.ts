@@ -126,7 +126,7 @@ export function getMigrationErrorHint(err?: unknown): string {
         ? err.message.toLowerCase()
         : '';
   if (msg.includes('warehouse')) {
-    return 'Anbar migrasiyası: serverdə npm run db:migrate:warehouse && pm2 restart all';
+    return 'Anbar migrasiyası: serverdə npm run db:migrate:warehouse-locations && pm2 restart all';
   }
   if (msg.includes('device_token')) {
     return 'Serverdə push migrasiyası: npm run db:migrate:devices && pm2 restart all';
@@ -646,17 +646,29 @@ export async function exportHistoryExcel(
 }
 
 export async function getWarehouseSummary(): Promise<WarehouseSummaryResponse> {
-  return request<WarehouseSummaryResponse>('/warehouse/summary');
+  const data = await request<WarehouseSummaryResponse>('/warehouse/summary');
+  return {
+    ...data,
+    warehouses:
+      Array.isArray(data.warehouses) && data.warehouses.length > 0
+        ? data.warehouses
+        : data.warehouse
+          ? [data.warehouse]
+          : [],
+    warehouse: data.warehouse ?? data.warehouses?.[0],
+  };
 }
 
 export async function getWarehouseUpdates(
   period: WarehousePeriod,
   courierId?: number,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  warehouseCode?: string
 ): Promise<WarehouseUpdate[]> {
   const params = new URLSearchParams({ period });
   if (courierId) params.set('courier_id', String(courierId));
+  if (warehouseCode) params.set('warehouse_code', warehouseCode);
   if (period === 'custom' && startDate && endDate) {
     params.set('startDate', startDate);
     params.set('endDate', endDate);
@@ -668,10 +680,37 @@ export async function getWarehouseUpdates(
 export async function patchWarehouseStock(
   payload: WarehouseStockPayload
 ): Promise<WarehouseSummaryResponse> {
-  return request<WarehouseSummaryResponse>('/warehouse/stock', {
+  const data = await request<WarehouseSummaryResponse>('/warehouse/stock', {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
+  return {
+    ...data,
+    warehouses:
+      Array.isArray(data.warehouses) && data.warehouses.length > 0
+        ? data.warehouses
+        : data.warehouse
+          ? [data.warehouse]
+          : [],
+    warehouse: data.warehouse ?? data.warehouses?.[0],
+  };
+}
+
+export async function patchCourierWarehouse(
+  courierId: number,
+  warehouseCode: string
+): Promise<Courier> {
+  const data = await request<{ courier?: Courier } | Courier>(
+    `/couriers/${courierId}/warehouse`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ warehouse_code: warehouseCode }),
+    }
+  );
+  if (data && typeof data === 'object' && 'courier' in data && data.courier) {
+    return data.courier;
+  }
+  return data as Courier;
 }
 
 /** Login və səhifə açılışında backend passiv müştəri yoxlaması işlədə bilər */

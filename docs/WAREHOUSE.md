@@ -1,51 +1,67 @@
-# Su doldurma anbarı (Admin)
+# Su doldurma anbarı (Admin) — 2 məntəqə
 
-Kuryer su doldurma məntəqəsində bidon hərəkətini qeyd edir; admin real vaxtda anbar və müştəridəki ümumi bidon sayını görür.
+**Novxanı** (`novxani`) və **Azadlıq** (`azadliq`) — iki ayrı anbar. Hər kuryerin default anbarı var.
 
 Frontend: `/dashboard/warehouse` · API: `/api/warehouse/*`
+
+## Dashboard
+
+`GET /api/warehouse/summary` → `warehouses[]`
+
+| Göstərici | Mənbə |
+|-----------|--------|
+| Novxanı / Azadlıq dolu-boş | `warehouses[].full_count` / `empty_count` |
+| Pompa / dispenser | `warehouses[].pump_count` / `dispenser_count` |
+| Müştərilərdə bidon | `customers.total_active_bidons` |
+| Son yeniləmə | `last_update` |
 
 ## Admin panel
 
 | Bölmə | URL |
 |-------|-----|
 | Anbar səhifəsi | `/dashboard/warehouse` |
-| Dashboard xülasə | `/dashboard` (anbar kartı) |
+| Dashboard xülasə | `/dashboard` (hər məntəqə) |
 
 **Avtomatik yeniləmə:** hər 30 saniyə + «Yenilə» düyməsi.
 
-**Admin sayım düzəltmə:** `PATCH /api/warehouse/stock` — modal «Sayım düzəlt».
+**Sayım düzəltmə:** `PATCH /api/warehouse/stock` — `warehouse_code` mütləq.
+
+**Kuryer default:** `PATCH /api/couriers/:id/warehouse`
 
 ## API
 
 | Method | URL | Kim |
 |--------|-----|-----|
 | GET | `/api/warehouse/summary` | admin, kuryer |
-| GET | `/api/warehouse/updates?period=&courier_id=` | admin, kuryer |
+| GET | `/api/warehouse/updates?warehouse_code=&period=&courier_id=` | admin, kuryer |
 | POST | `/api/warehouse/update` | kuryer |
 | PATCH | `/api/warehouse/stock` | admin |
+| PATCH | `/api/couriers/:id/warehouse` | admin |
+| GET | `/api/couriers` → `default_warehouse` | admin |
 
-## Push (admin)
+## Kuryer yeniləməsi (UI)
 
-| `data.type` | `data.screen` | Navigasiya |
-|-------------|---------------|------------|
-| `warehouse_updated` | `warehouse` | `/dashboard/warehouse` |
+```
+Elnur · Novxanı · girdi 10 dolu + 5 boş · çıxdı 20 dolu · götürdü 10
+```
 
-Kod: `lib/push.ts`
+| Sahə | Məna |
+|------|------|
+| `entry_full` | Neçə dolu ilə girdi |
+| `entry_empty` | Neçə boş ilə girdi |
+| `exit_full` | Neçə dolu ilə çıxdı |
+| `full_taken` | Anbardan götürülən (`exit_full − entry_full`) |
+| `warehouse_name` | Novxanı / Azadlıq |
+
+## Push
+
+| `data.type` | `data.screen` |
+|-------------|---------------|
+| `warehouse_updated` | `warehouse` |
 
 ## Deploy (backend)
 
 ```bash
-npm run db:migrate:warehouse
+npm run db:migrate:warehouse-locations
 pm2 restart all
 ```
-
-## Sahələr (kuryer yeniləməsi)
-
-| Sahə | Mənası |
-|------|--------|
-| `empty_in` | Anbara daxil boş |
-| `full_in` | Anbara daxil dolu |
-| `full_out` | Anbardan götürülən dolu |
-| `exit_full` | Maşında dolu (audit) |
-| `remaining_full` | Anbarda qalan dolu |
-| `remaining_empty` | Anbarda qalan boş |

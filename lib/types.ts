@@ -4,6 +4,8 @@ export type OrderStatus = 'pending' | 'assigned' | 'in_progress' | 'completed';
 
 export type OrderType = 'delivery' | 'pickup';
 
+export type WarehouseCode = 'novxani' | 'azadliq';
+
 export type OrderExtraType = 'pump' | 'dispenser' | 'fine' | 'other';
 
 export interface OrderExtra {
@@ -119,6 +121,10 @@ export interface Courier {
   email?: string;
   phone?: string;
   status?: string;
+  /** Default anbar: novxani | azadliq */
+  default_warehouse?: WarehouseCode | string | null;
+  default_warehouse_code?: WarehouseCode | string | null;
+  default_warehouse_name?: string | null;
 }
 
 export type PaymentType = 'cash' | 'card' | 'credit';
@@ -361,8 +367,14 @@ export type ExpensePeriod = 'yesterday' | 'today' | 'custom';
 export type WarehousePeriod = 'yesterday' | 'today' | 'custom';
 
 export interface WarehouseStock {
+  code?: WarehouseCode | string;
+  warehouse_code?: WarehouseCode | string;
+  name?: string;
+  warehouse_name?: string;
   full_count: number;
   empty_count: number;
+  pump_count?: number;
+  dispenser_count?: number;
   updated_at?: string;
   updated_by_name?: string;
 }
@@ -376,10 +388,18 @@ export interface WarehouseUpdate {
   id?: number;
   courier_id?: number;
   courier_name?: string;
+  warehouse_code?: WarehouseCode | string;
+  warehouse_name?: string;
+  /** Köhnə API */
   empty_in: number;
   full_in: number;
   full_out: number;
+  /** Yeni API */
+  entry_full?: number;
+  entry_empty?: number;
   exit_full?: number;
+  /** Anbardan götürülən dolu (exit_full − entry_full) */
+  full_taken?: number;
   previous_full?: number;
   previous_empty?: number;
   remaining_full: number;
@@ -389,14 +409,20 @@ export interface WarehouseUpdate {
 }
 
 export interface WarehouseSummaryResponse {
-  warehouse: WarehouseStock;
+  /** Köhnə tək anbar — geriyə uyğunluq */
+  warehouse?: WarehouseStock;
+  /** Novxanı + Azadlıq */
+  warehouses?: WarehouseStock[];
   customers: WarehouseCustomersSummary;
   last_update?: WarehouseUpdate | null;
 }
 
 export interface WarehouseStockPayload {
+  warehouse_code: WarehouseCode | string;
   full_count: number;
   empty_count: number;
+  pump_count?: number;
+  dispenser_count?: number;
   notes?: string;
 }
 

@@ -1,12 +1,15 @@
 import type {
   Customer,
   CustomerPayload,
+  Courier,
   DateRangePreset,
   HistoryPeriod,
   HistorySummary,
   Order,
   OrderExtraPayload,
   OrderNote,
+  WarehouseStock,
+  WarehouseSummaryResponse,
   WarehouseUpdate,
 } from './types';
 
@@ -523,12 +526,73 @@ export function sumExpenseAmounts(expenses: { amount: number | string }[]): numb
 }
 
 export function formatWarehouseUpdateSummary(u: WarehouseUpdate): string {
-  const parts: string[] = [];
-  if (u.empty_in) parts.push(`+${u.empty_in} boş`);
-  if (u.full_in) parts.push(`+${u.full_in} dolu`);
-  if (u.full_out) parts.push(`−${u.full_out} dolu`);
-  const tail = `→ anbarda ${u.remaining_full} dolu, ${u.remaining_empty} boş`;
-  return parts.length ? `${parts.join(', ')} ${tail}` : tail;
+  const entryFull = u.entry_full ?? u.full_in ?? 0;
+  const entryEmpty = u.entry_empty ?? u.empty_in ?? 0;
+  const exitFull = u.exit_full ?? u.full_out ?? 0;
+  const taken =
+    u.full_taken != null
+      ? u.full_taken
+      : Math.max(0, exitFull - entryFull);
+
+  const name = u.warehouse_name || getWarehouseLabel(u.warehouse_code);
+  const who = u.courier_name || 'Kuryer';
+  const place = name ? ` · ${name}` : '';
+
+  return `${who}${place} · girdi ${entryFull} dolu + ${entryEmpty} boş · çıxdı ${exitFull} dolu · götürdü ${taken}`;
+}
+
+export function getWarehouseLabel(code?: string | null): string {
+  switch ((code || '').toLowerCase()) {
+    case 'novxani':
+      return 'Novxanı';
+    case 'azadliq':
+      return 'Azadlıq';
+    default:
+      return code || 'Anbar';
+  }
+}
+
+export function getWarehouseCode(w: {
+  code?: string;
+  warehouse_code?: string;
+}): string {
+  return (w.warehouse_code || w.code || '').toLowerCase();
+}
+
+export function getWarehouseName(w: {
+  name?: string;
+  warehouse_name?: string;
+  code?: string;
+  warehouse_code?: string;
+}): string {
+  return (
+    w.warehouse_name ||
+    w.name ||
+    getWarehouseLabel(w.warehouse_code || w.code)
+  );
+}
+
+export function normalizeWarehousesList(
+  summary: WarehouseSummaryResponse | null | undefined
+): WarehouseStock[] {
+  if (!summary) return [];
+  if (Array.isArray(summary.warehouses) && summary.warehouses.length > 0) {
+    return summary.warehouses;
+  }
+  if (summary.warehouse) {
+    return [summary.warehouse];
+  }
+  return [];
+}
+
+export function getCourierDefaultWarehouse(
+  courier: Courier
+): string | null {
+  const code =
+    courier.default_warehouse_code ||
+    courier.default_warehouse ||
+    null;
+  return code ? String(code).toLowerCase() : null;
 }
 
 export function getOrderTypeLabel(type?: string): string {

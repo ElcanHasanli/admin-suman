@@ -51,12 +51,12 @@ GET /api/history?period=custom&startDate=2026-03-01&endDate=2026-03-31
 ## 3. Anbar tarixçəsi
 
 ```http
-GET /api/warehouse/updates?period=yesterday|today|custom&startDate=&endDate=
+GET /api/warehouse/updates?period=yesterday|today|custom&warehouse_code=novxani&startDate=&endDate=
 ```
 
-Eyni period məntiqi (Baku timezone).
+Eyni period məntiqi (Baku timezone). 2 məntəqə: `docs/WAREHOUSE.md` · §15.
 
-**Frontend:** Anbar səhifəsi eyni `resolveApiPeriodParams` istifadə edir.
+**Frontend:** Anbar səhifəsi eyni `resolveApiPeriodParams` + `warehouse_code` filteri.
 
 ## 4. Push
 
@@ -192,4 +192,10 @@ Period: `today` | `yesterday` | `week` | `month` | `custom`.
 `GET /api/customers/debtors` · `POST /api/customers/:id/pay-debt`
 
 **Frontend:** `/dashboard/customers/debtors` — `DebtorsView`, `CustomerPayDebtModal`.
+
+## 15. Anbar — 2 məntəqə (Novxanı / Azadlıq)
+
+`GET /api/warehouse/summary` → `warehouses[]` · `PATCH /api/warehouse/stock` + `warehouse_code` · `PATCH /api/couriers/:id/warehouse`
+
+**Frontend:** `WarehouseView` — hər məntəqə kartı (dolu/boş/pompa/dispenser), tarixçə filteri, kuryer default anbarı. Ətraflı: `docs/WAREHOUSE.md`.
 

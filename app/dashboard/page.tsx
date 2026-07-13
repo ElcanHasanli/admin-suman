@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Users, Package, CheckCircle, TrendingUp, Droplets } from 'lucide-react';
 import { getCustomers, getHistory, getOrders, getWarehouseSummary } from '@/lib/api';
-import { formatCurrency, getNetRevenue } from '@/lib/utils';
+import { formatCurrency, getNetRevenue, getWarehouseName, normalizeWarehousesList } from '@/lib/utils';
+import type { WarehouseStock } from '@/lib/types';
 import { StatCard, Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 
@@ -17,7 +18,7 @@ export default function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
   const [historyWarning, setHistoryWarning] = useState<string | null>(null);
-  const [warehouse, setWarehouse] = useState<{ full: number; empty: number } | null>(null);
+  const [warehouses, setWarehouses] = useState<WarehouseStock[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -63,10 +64,7 @@ export default function DashboardPage() {
       }
 
       if (warehouseRes.status === 'fulfilled') {
-        setWarehouse({
-          full: warehouseRes.value.warehouse.full_count,
-          empty: warehouseRes.value.warehouse.empty_count,
-        });
+        setWarehouses(normalizeWarehousesList(warehouseRes.value));
       }
 
       setStats(next);
@@ -90,14 +88,21 @@ export default function DashboardPage() {
 
       <StatsGrid loading={loading} stats={stats} />
 
-      {warehouse && (
+      {warehouses.length > 0 && (
         <Link href="/dashboard/warehouse">
           <Card className="flex items-center justify-between gap-4 p-4 transition hover:ring-2 hover:ring-sky-200 sm:p-5">
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-slate-500">Su doldurma anbarı</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">
-                {warehouse.full} dolu · {warehouse.empty} boş
-              </p>
+              <div className="mt-1 space-y-0.5">
+                {warehouses.map((w) => (
+                  <p key={w.warehouse_code || w.code || getWarehouseName(w)} className="text-sm font-semibold text-slate-900 sm:text-base">
+                    {getWarehouseName(w)}:{' '}
+                    <span className="font-bold">
+                      {w.full_count} dolu · {w.empty_count} boş
+                    </span>
+                  </p>
+                ))}
+              </div>
               <p className="mt-1 text-xs text-sky-600">Anbar səhifəsinə keç →</p>
             </div>
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 text-white">
