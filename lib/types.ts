@@ -4,7 +4,7 @@ export type OrderStatus = 'pending' | 'assigned' | 'in_progress' | 'completed';
 
 export type OrderType = 'delivery' | 'pickup';
 
-export type WarehouseCode = 'novxani' | 'azadliq';
+export type WarehouseCode = 'mikrorayon' | 'xirdalan';
 
 export type OrderExtraType = 'pump' | 'dispenser' | 'fine' | 'other';
 
@@ -407,7 +407,7 @@ export interface WarehouseUpdate {
 export interface WarehouseSummaryResponse {
   /** Köhnə tək anbar — geriyə uyğunluq */
   warehouse?: WarehouseStock;
-  /** Novxanı + Azadlıq */
+  /** Mikrorayon + Xırdalan */
   warehouses?: WarehouseStock[];
   customers: WarehouseCustomersSummary;
   last_update?: WarehouseUpdate | null;

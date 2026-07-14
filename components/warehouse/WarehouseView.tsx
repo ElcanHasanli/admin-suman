@@ -32,6 +32,7 @@ import {
   getWarehouseCode,
   getWarehouseLabel,
   getWarehouseName,
+  normalizeWarehouseCode,
   normalizeWarehousesList,
   resolveApiPeriodParams,
 } from '@/lib/utils';
@@ -58,8 +59,8 @@ import {
 const REFRESH_MS = 30_000;
 
 const WAREHOUSE_OPTIONS: { code: WarehouseCode; label: string }[] = [
-  { code: 'novxani', label: 'Novxanı' },
-  { code: 'azadliq', label: 'Azadlıq' },
+  { code: 'mikrorayon', label: 'Mikrorayon' },
+  { code: 'xirdalan', label: 'Xırdalan' },
 ];
 
 export function WarehouseView() {
@@ -75,7 +76,7 @@ export function WarehouseView() {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    warehouse_code: 'novxani' as WarehouseCode,
+    warehouse_code: 'mikrorayon' as WarehouseCode,
     full_count: '',
     empty_count: '',
     notes: '',
@@ -144,9 +145,9 @@ export function WarehouseView() {
       w ??
       warehouses.find((x) => getWarehouseCode(x) === warehouseFilter) ??
       warehouses[0];
-    const code = (getWarehouseCode(target) || 'novxani') as WarehouseCode;
+    const code = normalizeWarehouseCode(getWarehouseCode(target) || 'mikrorayon');
     setForm({
-      warehouse_code: code === 'azadliq' ? 'azadliq' : 'novxani',
+      warehouse_code: code,
       full_count: String(target?.full_count ?? ''),
       empty_count: String(target?.empty_count ?? ''),
       notes: '',

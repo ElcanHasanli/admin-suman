@@ -1,6 +1,6 @@
 # Su doldurma anbarı (Admin) — 2 məntəqə
 
-**Novxanı** (`novxani`) və **Azadlıq** (`azadliq`) — iki ayrı anbar.
+**Mikrorayon** (`mikrorayon`) və **Xırdalan** (`xirdalan`) — iki ayrı anbar.
 
 Frontend: `/dashboard/warehouse` · API: `/api/warehouse/*`
 
@@ -10,7 +10,7 @@ Frontend: `/dashboard/warehouse` · API: `/api/warehouse/*`
 
 | Göstərici | Mənbə |
 |-----------|--------|
-| Novxanı / Azadlıq dolu-boş | `warehouses[].full_count` / `empty_count` |
+| Mikrorayon / Xırdalan dolu-boş | `warehouses[].full_count` / `empty_count` |
 | Müştərilərdə bidon | `customers.total_active_bidons` |
 | Son yeniləmə | `last_update` |
 
@@ -37,7 +37,7 @@ Frontend: `/dashboard/warehouse` · API: `/api/warehouse/*`
 ## Kuryer yeniləməsi (UI)
 
 ```
-Elnur · Novxanı · girdi 10 dolu + 5 boş · çıxdı 20 dolu · götürdü 10
+Elnur · Mikrorayon · girdi 10 dolu + 5 boş · çıxdı 20 dolu · götürdü 10
 ```
 
 | Sahə | Məna |
@@ -46,7 +46,7 @@ Elnur · Novxanı · girdi 10 dolu + 5 boş · çıxdı 20 dolu · götürdü 10
 | `entry_empty` | Neçə boş ilə girdi |
 | `exit_full` | Neçə dolu ilə çıxdı |
 | `full_taken` | Anbardan götürülən (`exit_full − entry_full`) |
-| `warehouse_name` | Novxanı / Azadlıq |
+| `warehouse_name` | Mikrorayon / Xırdalan |
 
 ## Push
 
@@ -57,6 +57,6 @@ Elnur · Novxanı · girdi 10 dolu + 5 boş · çıxdı 20 dolu · götürdü 10
 ## Deploy (backend)
 
 ```bash
-npm run db:migrate:warehouse-locations
+npm run db:migrate:warehouse-rename
 pm2 restart all
 ```

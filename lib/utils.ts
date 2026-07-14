@@ -7,6 +7,7 @@ import type {
   Order,
   OrderExtraPayload,
   OrderNote,
+  WarehouseCode,
   WarehouseStock,
   WarehouseSummaryResponse,
   WarehouseUpdate,
@@ -544,20 +545,33 @@ export function formatWarehouseUpdateSummary(u: WarehouseUpdate): string {
 
 export function getWarehouseLabel(code?: string | null): string {
   switch ((code || '').toLowerCase()) {
-    case 'novxani':
-      return 'Novxanı';
-    case 'azadliq':
-      return 'Azadlıq';
+    case 'mikrorayon':
+    case 'novxani': // köhnə kod
+      return 'Mikrorayon';
+    case 'xirdalan':
+    case 'azadliq': // köhnə kod
+      return 'Xırdalan';
     default:
       return code || 'Anbar';
   }
+}
+
+/** API / form üçün sabit kod — köhnə kodları yeniyə map edir */
+export function normalizeWarehouseCode(code?: string | null): WarehouseCode {
+  const c = (code || '').toLowerCase();
+  if (c === 'xirdalan' || c === 'azadliq') return 'xirdalan';
+  return 'mikrorayon';
 }
 
 export function getWarehouseCode(w: {
   code?: string;
   warehouse_code?: string;
 }): string {
-  return (w.warehouse_code || w.code || '').toLowerCase();
+  const raw = (w.warehouse_code || w.code || '').toLowerCase();
+  if (!raw) return '';
+  if (raw === 'novxani') return 'mikrorayon';
+  if (raw === 'azadliq') return 'xirdalan';
+  return raw;
 }
 
 export function getWarehouseName(w: {
@@ -566,11 +580,16 @@ export function getWarehouseName(w: {
   code?: string;
   warehouse_code?: string;
 }): string {
-  return (
-    w.warehouse_name ||
-    w.name ||
-    getWarehouseLabel(w.warehouse_code || w.code)
-  );
+  const raw = (w.warehouse_name || w.name || '').trim();
+  if (raw) {
+    const lower = raw.toLowerCase();
+    if (lower.includes('novxan') || lower.includes('mikro')) return 'Mikrorayon';
+    if (lower.includes('azadl') || lower.includes('xırdalan') || lower.includes('xirdalan')) {
+      return 'Xırdalan';
+    }
+    return raw;
+  }
+  return getWarehouseLabel(w.warehouse_code || w.code);
 }
 
 export function normalizeWarehousesList(

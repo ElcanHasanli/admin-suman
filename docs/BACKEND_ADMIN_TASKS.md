@@ -51,7 +51,7 @@ GET /api/history?period=custom&startDate=2026-03-01&endDate=2026-03-31
 ## 3. Anbar tarixçəsi
 
 ```http
-GET /api/warehouse/updates?period=yesterday|today|custom&warehouse_code=novxani&startDate=&endDate=
+GET /api/warehouse/updates?period=yesterday|today|custom&warehouse_code=mikrorayon&startDate=&endDate=
 ```
 
 Eyni period məntiqi (Baku timezone). 2 məntəqə: `docs/WAREHOUSE.md` · §15.
@@ -193,7 +193,7 @@ Period: `today` | `yesterday` | `week` | `month` | `custom`.
 
 **Frontend:** `/dashboard/customers/debtors` — `DebtorsView`, `CustomerPayDebtModal`.
 
-## 15. Anbar — 2 məntəqə (Novxanı / Azadlıq)
+## 15. Anbar — 2 məntəqə (Mikrorayon / Xırdalan)
 
 `GET /api/warehouse/summary` → `warehouses[]` · `PATCH /api/warehouse/stock` + `warehouse_code`
 
