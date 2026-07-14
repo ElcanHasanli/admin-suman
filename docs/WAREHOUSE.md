@@ -1,6 +1,6 @@
 # Su doldurma anbarı (Admin) — 2 məntəqə
 
-**Novxanı** (`novxani`) və **Azadlıq** (`azadliq`) — iki ayrı anbar. Hər kuryerin default anbarı var.
+**Novxanı** (`novxani`) və **Azadlıq** (`azadliq`) — iki ayrı anbar.
 
 Frontend: `/dashboard/warehouse` · API: `/api/warehouse/*`
 
@@ -25,8 +25,6 @@ Frontend: `/dashboard/warehouse` · API: `/api/warehouse/*`
 
 **Sayım düzəltmə:** `PATCH /api/warehouse/stock` — `warehouse_code` mütləq.
 
-**Kuryer default:** `PATCH /api/couriers/:id/warehouse`
-
 ## API
 
 | Method | URL | Kim |
@@ -35,8 +33,6 @@ Frontend: `/dashboard/warehouse` · API: `/api/warehouse/*`
 | GET | `/api/warehouse/updates?warehouse_code=&period=&courier_id=` | admin, kuryer |
 | POST | `/api/warehouse/update` | kuryer |
 | PATCH | `/api/warehouse/stock` | admin |
-| PATCH | `/api/couriers/:id/warehouse` | admin |
-| GET | `/api/couriers` → `default_warehouse` | admin |
 
 ## Kuryer yeniləməsi (UI)
 

@@ -15,7 +15,6 @@ import {
   getWarehouseSummary,
   getWarehouseUpdates,
   isBackendMigrationError,
-  patchCourierWarehouse,
   patchWarehouseStock,
 } from '@/lib/api';
 import type {
@@ -29,7 +28,6 @@ import type {
 import {
   formatDateTime,
   formatWarehouseUpdateSummary,
-  getCourierDefaultWarehouse,
   getCourierName,
   getWarehouseCode,
   getWarehouseLabel,
@@ -83,7 +81,6 @@ export function WarehouseView() {
     notes: '',
   });
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-  const [savingCourierId, setSavingCourierId] = useState<number | null>(null);
 
   const warehouses = useMemo(() => normalizeWarehousesList(summary), [summary]);
 
@@ -188,37 +185,6 @@ export function WarehouseView() {
       });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleCourierWarehouse = async (courier: Courier, code: string) => {
-    setSavingCourierId(courier.id);
-    try {
-      const updated = await patchCourierWarehouse(courier.id, code);
-      setCouriers((prev) =>
-        prev.map((c) =>
-          c.id === courier.id
-            ? {
-                ...c,
-                ...updated,
-                default_warehouse: code,
-                default_warehouse_code: code,
-                default_warehouse_name: getWarehouseLabel(code),
-              }
-            : c
-        )
-      );
-      setToast({
-        message: `${getCourierName(courier)} → ${getWarehouseLabel(code)}`,
-        type: 'success',
-      });
-    } catch (err) {
-      setToast({
-        message: err instanceof Error ? err.message : 'Kuryer anbarı yenilənmədi',
-        type: 'error',
-      });
-    } finally {
-      setSavingCourierId(null);
     }
   };
 
@@ -469,56 +435,6 @@ export function WarehouseView() {
             </table>
           </TableScroll>
         </DesktopOnly>
-      </Card>
-
-      <Card className="overflow-hidden">
-        <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
-          <h2 className="font-semibold text-slate-900">Kuryer default anbarı</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Hər kuryerin əsas məntəqəsi — Novxanı və ya Azadlıq
-          </p>
-        </div>
-        <div className="divide-y divide-slate-100">
-          {couriers.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-slate-500 sm:px-5">Kuryer yoxdur</p>
-          ) : (
-            couriers.map((c) => {
-              const current = getCourierDefaultWarehouse(c) || '';
-              return (
-                <div
-                  key={c.id}
-                  className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
-                >
-                  <div>
-                    <p className="font-medium text-slate-900">{getCourierName(c)}</p>
-                    <p className="text-xs text-slate-500">
-                      {current
-                        ? getWarehouseLabel(current)
-                        : 'Default anbar seçilməyib'}
-                    </p>
-                  </div>
-                  <select
-                    value={current}
-                    disabled={savingCourierId === c.id}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        void handleCourierWarehouse(c, e.target.value);
-                      }
-                    }}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
-                  >
-                    <option value="">Seçin...</option>
-                    {WAREHOUSE_OPTIONS.map((o) => (
-                      <option key={o.code} value={o.code}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              );
-            })
-          )}
-        </div>
       </Card>
 
       <Modal

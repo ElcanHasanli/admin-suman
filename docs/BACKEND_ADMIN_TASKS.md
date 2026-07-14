@@ -195,7 +195,7 @@ Period: `today` | `yesterday` | `week` | `month` | `custom`.
 
 ## 15. Anbar — 2 məntəqə (Novxanı / Azadlıq)
 
-`GET /api/warehouse/summary` → `warehouses[]` · `PATCH /api/warehouse/stock` + `warehouse_code` · `PATCH /api/couriers/:id/warehouse`
+`GET /api/warehouse/summary` → `warehouses[]` · `PATCH /api/warehouse/stock` + `warehouse_code`
 
-**Frontend:** `WarehouseView` — hər məntəqə kartı (**dolu / boş**), kuryer giriş-çıxış tarixçəsi (`girdi X dolu + Y boş · çıxdı Z dolu`), kuryer default anbarı. Ətraflı: `docs/WAREHOUSE.md`.
+**Frontend:** `WarehouseView` — hər məntəqə kartı (**dolu / boş**), kuryer giriş-çıxış tarixçəsi (`girdi X dolu + Y boş · çıxdı Z dolu`). Ətraflı: `docs/WAREHOUSE.md`.
 

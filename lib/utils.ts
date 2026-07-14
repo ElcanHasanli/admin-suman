@@ -1,7 +1,6 @@
 import type {
   Customer,
   CustomerPayload,
-  Courier,
   DateRangePreset,
   HistoryPeriod,
   HistorySummary,
@@ -585,16 +584,6 @@ export function normalizeWarehousesList(
     return [summary.warehouse];
   }
   return [];
-}
-
-export function getCourierDefaultWarehouse(
-  courier: Courier
-): string | null {
-  const code =
-    courier.default_warehouse_code ||
-    courier.default_warehouse ||
-    null;
-  return code ? String(code).toLowerCase() : null;
 }
 
 export function getOrderTypeLabel(type?: string): string {

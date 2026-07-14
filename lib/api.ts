@@ -696,23 +696,6 @@ export async function patchWarehouseStock(
   };
 }
 
-export async function patchCourierWarehouse(
-  courierId: number,
-  warehouseCode: string
-): Promise<Courier> {
-  const data = await request<{ courier?: Courier } | Courier>(
-    `/couriers/${courierId}/warehouse`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify({ warehouse_code: warehouseCode }),
-    }
-  );
-  if (data && typeof data === 'object' && 'courier' in data && data.courier) {
-    return data.courier;
-  }
-  return data as Courier;
-}
-
 /** Login və səhifə açılışında backend passiv müştəri yoxlaması işlədə bilər */
 export async function getNotifications(): Promise<AdminNotification[]> {
   const data = await request<unknown>('/notifications');

@@ -121,10 +121,6 @@ export interface Courier {
   email?: string;
   phone?: string;
   status?: string;
-  /** Default anbar: novxani | azadliq */
-  default_warehouse?: WarehouseCode | string | null;
-  default_warehouse_code?: WarehouseCode | string | null;
-  default_warehouse_name?: string | null;
 }
 
 export type PaymentType = 'cash' | 'card' | 'credit';
