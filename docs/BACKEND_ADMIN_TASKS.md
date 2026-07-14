@@ -197,5 +197,5 @@ Period: `today` | `yesterday` | `week` | `month` | `custom`.
 
 `GET /api/warehouse/summary` → `warehouses[]` · `PATCH /api/warehouse/stock` + `warehouse_code` · `PATCH /api/couriers/:id/warehouse`
 
-**Frontend:** `WarehouseView` — hər məntəqə kartı (dolu/boş/pompa/dispenser), tarixçə filteri, kuryer default anbarı. Ətraflı: `docs/WAREHOUSE.md`.
+**Frontend:** `WarehouseView` — hər məntəqə kartı (**dolu / boş**), kuryer giriş-çıxış tarixçəsi (`girdi X dolu + Y boş · çıxdı Z dolu`), kuryer default anbarı. Ətraflı: `docs/WAREHOUSE.md`.
 

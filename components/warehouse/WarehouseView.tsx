@@ -8,7 +8,6 @@ import {
   Users,
   Warehouse,
   Pencil,
-  Wrench,
 } from 'lucide-react';
 import {
   getCouriers,
@@ -81,8 +80,6 @@ export function WarehouseView() {
     warehouse_code: 'novxani' as WarehouseCode,
     full_count: '',
     empty_count: '',
-    pump_count: '',
-    dispenser_count: '',
     notes: '',
   });
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -155,8 +152,6 @@ export function WarehouseView() {
       warehouse_code: code === 'azadliq' ? 'azadliq' : 'novxani',
       full_count: String(target?.full_count ?? ''),
       empty_count: String(target?.empty_count ?? ''),
-      pump_count: String(target?.pump_count ?? ''),
-      dispenser_count: String(target?.dispenser_count ?? ''),
       notes: '',
     });
     setEditOpen(true);
@@ -178,14 +173,6 @@ export function WarehouseView() {
         empty_count,
         notes: form.notes.trim() || undefined,
       };
-      if (form.pump_count !== '') {
-        const pump = Number(form.pump_count);
-        if (Number.isFinite(pump)) payload.pump_count = pump;
-      }
-      if (form.dispenser_count !== '') {
-        const dispenser = Number(form.dispenser_count);
-        if (Number.isFinite(dispenser)) payload.dispenser_count = dispenser;
-      }
       const data = await patchWarehouseStock(payload);
       setSummary(data);
       setEditOpen(false);
@@ -322,8 +309,6 @@ export function WarehouseView() {
               name: o.label,
               full_count: 0,
               empty_count: 0,
-              pump_count: 0,
-              dispenser_count: 0,
             }))
           : warehouses
         ).map((w) => (
@@ -576,10 +561,6 @@ export function WarehouseView() {
                   warehouse_code: code,
                   full_count: String(existing?.full_count ?? f.full_count),
                   empty_count: String(existing?.empty_count ?? f.empty_count),
-                  pump_count: String(existing?.pump_count ?? f.pump_count),
-                  dispenser_count: String(
-                    existing?.dispenser_count ?? f.dispenser_count
-                  ),
                 }));
               }}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
@@ -606,22 +587,6 @@ export function WarehouseView() {
             value={form.empty_count}
             onChange={(e) => setForm((f) => ({ ...f, empty_count: e.target.value }))}
             required
-          />
-          <Input
-            label="Pompa"
-            type="number"
-            min={0}
-            value={form.pump_count}
-            onChange={(e) => setForm((f) => ({ ...f, pump_count: e.target.value }))}
-          />
-          <Input
-            label="Dispenser"
-            type="number"
-            min={0}
-            value={form.dispenser_count}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, dispenser_count: e.target.value }))
-            }
           />
           <Input
             label="Qeyd (istəyə bağlı)"
@@ -666,7 +631,7 @@ function WarehouseLocationCard({
           Düzəlt
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4 sm:p-5">
+      <div className="grid grid-cols-2 gap-3 p-4 sm:p-5">
         <MiniStat
           label="Dolu"
           value={loading ? '...' : warehouse.full_count}
@@ -678,18 +643,6 @@ function WarehouseLocationCard({
           value={loading ? '...' : warehouse.empty_count}
           icon={<PackageOpen size={16} />}
           tone="violet"
-        />
-        <MiniStat
-          label="Pompa"
-          value={loading ? '...' : (warehouse.pump_count ?? 0)}
-          icon={<Wrench size={16} />}
-          tone="amber"
-        />
-        <MiniStat
-          label="Dispenser"
-          value={loading ? '...' : (warehouse.dispenser_count ?? 0)}
-          icon={<Wrench size={16} />}
-          tone="emerald"
         />
       </div>
     </Card>
@@ -705,13 +658,11 @@ function MiniStat({
   label: string;
   value: string | number;
   icon: React.ReactNode;
-  tone: 'sky' | 'violet' | 'amber' | 'emerald';
+  tone: 'sky' | 'violet';
 }) {
   const tones = {
     sky: 'bg-sky-50 text-sky-700',
     violet: 'bg-violet-50 text-violet-700',
-    amber: 'bg-amber-50 text-amber-700',
-    emerald: 'bg-emerald-50 text-emerald-700',
   };
   return (
     <div className={`rounded-xl p-3 ${tones[tone]}`}>

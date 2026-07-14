@@ -11,7 +11,6 @@ Frontend: `/dashboard/warehouse` · API: `/api/warehouse/*`
 | Göstərici | Mənbə |
 |-----------|--------|
 | Novxanı / Azadlıq dolu-boş | `warehouses[].full_count` / `empty_count` |
-| Pompa / dispenser | `warehouses[].pump_count` / `dispenser_count` |
 | Müştərilərdə bidon | `customers.total_active_bidons` |
 | Son yeniləmə | `last_update` |
 

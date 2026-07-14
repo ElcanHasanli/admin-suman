@@ -538,7 +538,9 @@ export function formatWarehouseUpdateSummary(u: WarehouseUpdate): string {
   const who = u.courier_name || 'Kuryer';
   const place = name ? ` · ${name}` : '';
 
-  return `${who}${place} · girdi ${entryFull} dolu + ${entryEmpty} boş · çıxdı ${exitFull} dolu · götürdü ${taken}`;
+  return `${who}${place} · girdi ${entryFull} dolu + ${entryEmpty} boş · çıxdı ${exitFull} dolu${
+    taken > 0 ? ` · götürdü ${taken}` : ''
+  }`;
 }
 
 export function getWarehouseLabel(code?: string | null): string {
