@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogOut, Droplets } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { BrandLogo, KhamsaLogo } from '@/components/brand/BrandLogo';
 import { dashboardNav, isNavActive } from '@/components/layout/dashboard-nav';
 import { NotificationNavBadge } from '@/components/notifications/NotificationNavBadge';
 import { useConfirm } from '@/components/ui/ConfirmModal';
@@ -19,8 +20,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col bg-slate-900 text-white">
-      <div className="border-b border-slate-800 px-6 py-5">
-        <Brand />
+      <div className="border-b border-slate-800 px-4 py-4">
+        <BrandLogo size="md" priority />
       </div>
 
       {user?.company_name && (
@@ -83,22 +84,19 @@ export function Sidebar({ onLogout }: SidebarProps) {
           <LogOut size={18} />
           Çıxış
         </button>
+        <a
+          href="https://khamsacraft.az"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 flex flex-col items-center gap-1.5 rounded-lg bg-white/95 px-3 py-2.5 transition hover:bg-white"
+        >
+          <span className="text-[10px] uppercase tracking-wider text-slate-500">
+            Hazırlayan
+          </span>
+          <KhamsaLogo />
+        </a>
       </div>
       {ConfirmDialog}
     </aside>
-  );
-}
-
-function Brand() {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-cyan-500">
-        <Droplets size={22} />
-      </div>
-      <div className="min-w-0">
-        <h1 className="truncate text-xl font-bold tracking-tight">SuMan</h1>
-        <p className="text-xs text-slate-400">Admin Panel</p>
-      </div>
-    </div>
   );
 }

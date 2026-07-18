@@ -2,11 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Droplets, Eye, EyeOff, KeyRound, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Lock, Mail } from 'lucide-react';
 import { login as apiLogin } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { BrandLogo, KhamsaLogo } from '@/components/brand/BrandLogo';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+
+/** Əlaqə nömrəsi — dəyişmək üçün buranı yeniləyin */
+const SUPPORT_PHONE = '+994 50 555 62 32';
+const SUPPORT_PHONE_TEL = 'tel:+994505556232';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -106,9 +111,26 @@ export default function LoginPage() {
         <p className="mt-4 text-center text-xs text-slate-400">
           Lisenziya kodu şirkətinizə platform sahibi tərəfindən verilir
         </p>
-        <p className="mt-2 text-center text-xs text-slate-400">
-          KhamsaCraft · SuMan © {new Date().getFullYear()}
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-2 border-t border-slate-100 pt-5">
+         
+          <a
+            href="https://khamsacraft.az"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-80 transition hover:opacity-100"
+          >
+            <KhamsaLogo className="h-7" />
+          </a>
+          <a
+            href={SUPPORT_PHONE_TEL}
+            className="mt-1 text-sm text-slate-500 transition hover:text-sky-600"
+          >
+            {SUPPORT_PHONE}
+          </a>
+          <p className="text-[11px] text-slate-400">
+            © {new Date().getFullYear()} KhamsaCraft
+          </p>
+        </div>
       </LoginCard>
     </div>
   );
@@ -133,12 +155,37 @@ function LoginCard({ children }: { children: React.ReactNode }) {
 
 function LoginBrand() {
   return (
-    <div className="mb-6 text-center sm:mb-8">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 sm:h-16 sm:w-16">
-        <Droplets className="text-sky-600" size={28} />
+    <div className="mb-5 text-center sm:mb-6">
+      <div className="mx-auto flex justify-center">
+        <BrandLogo size="lg" priority centered />
       </div>
-      <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">SuMan</h1>
-      <p className="mt-1 text-slate-500">Su idarəetmə sistemi — Admin</p>
+      <div className="mt-1.5">
+        <PremiumBadge />
+      </div>
+    </div>
+  );
+}
+
+function PremiumBadge() {
+  return (
+    <div className="mx-auto flex max-w-[280px] items-center gap-3">
+      <span
+        className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-500/70 to-amber-600/90"
+        aria-hidden
+      />
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-700 sm:text-[11px]">
+        <span className="text-amber-500" aria-hidden>
+          ◆
+        </span>
+        Premium həll
+        <span className="text-amber-500" aria-hidden>
+          ◆
+        </span>
+      </span>
+      <span
+        className="h-px flex-1 bg-gradient-to-l from-transparent via-amber-500/70 to-amber-600/90"
+        aria-hidden
+      />
     </div>
   );
 }
