@@ -270,6 +270,8 @@ export interface HistoryDashboardDebtGiven {
     customer_id?: number;
     amount: number;
     order_id: number | null;
+    recorded_by_name?: string;
+    recorded_by_role?: 'courier' | 'admin' | string;
   }[];
 }
 
@@ -291,6 +293,25 @@ export interface HistoryDashboardCourierBalance {
   };
 }
 
+/** Bidon qutusu (ədəd — AZN deyil) */
+export interface HistoryDashboardBidonItem {
+  order_id: number;
+  customer?: string;
+  courier_id?: number;
+  courier_name?: string;
+  bidons: number;
+  order_type?: string;
+  completed_at?: string;
+}
+
+export interface HistoryDashboardBidonBox {
+  total: number;
+  count: number;
+  unit?: string;
+  label?: string;
+  items: HistoryDashboardBidonItem[];
+}
+
 export interface HistoryDashboard {
   sales: HistoryDashboardSales;
   debt_given: HistoryDashboardDebtGiven;
@@ -299,9 +320,13 @@ export interface HistoryDashboard {
   courier_balance: HistoryDashboardCourierBalance;
   expenses: HistoryDashboardAmountBox;
   net_balance: HistoryDashboardAmountBox;
+  /** Verilən dolu bidon */
+  bidons_sold: HistoryDashboardBidonBox;
+  /** Alınan boş bidon */
+  bidons_taken: HistoryDashboardBidonBox;
 }
 
-/** Filter olmadan — hər kuryer üçün eyni 7 qutu */
+/** Filter olmadan — hər kuryer üçün eyni qutular */
 export interface HistoryDashboardByCourier {
   courier_id: number;
   courier_name?: string;

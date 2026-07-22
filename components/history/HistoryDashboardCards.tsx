@@ -9,14 +9,18 @@ import {
   Truck,
   TrendingDown,
   Scale,
+  PackageCheck,
+  PackageMinus,
 } from 'lucide-react';
 import type {
   Expense,
   HistoryDashboard,
+  HistoryDashboardBidonBox,
   HistoryDashboardByCourier,
 } from '@/lib/types';
 import {
   formatCurrency,
+  formatDateTime,
   getExpenseAuthorLabel,
   getOrderCustomerName,
   getOrderExtraLabel,
@@ -34,6 +38,8 @@ type ModalKind =
   | 'prepaid'
   | 'courier_balance'
   | 'expenses'
+  | 'bidons_sold'
+  | 'bidons_taken'
   | null;
 
 export function HistoryDashboardCards({
@@ -143,6 +149,34 @@ export function HistoryDashboardCards({
           icon={<Scale size={20} />}
           accent="emerald"
         />
+        <StatCard
+          title="Satılan bidon"
+          value={loading ? '...' : String(d?.bidons_sold?.total ?? 0)}
+          subtitle={
+            loading
+              ? undefined
+              : d?.bidons_sold?.count
+                ? `${d.bidons_sold.count} sifariş · bidon`
+                : 'Dolu verilən'
+          }
+          icon={<PackageCheck size={20} />}
+          accent="sky"
+          onClick={d?.bidons_sold ? () => setModal('bidons_sold') : undefined}
+        />
+        <StatCard
+          title="Götürülən bidon"
+          value={loading ? '...' : String(d?.bidons_taken?.total ?? 0)}
+          subtitle={
+            loading
+              ? undefined
+              : d?.bidons_taken?.count
+                ? `${d.bidons_taken.count} sifariş · bidon`
+                : 'Boş alınan'
+          }
+          icon={<PackageMinus size={20} />}
+          accent="violet"
+          onClick={d?.bidons_taken ? () => setModal('bidons_taken') : undefined}
+        />
       </div>
 
       {showByCourier && byCourier && byCourier.length > 0 && (
@@ -172,6 +206,20 @@ export function HistoryDashboardCards({
         onClose={() => setModal(null)}
         expenses={expenses}
       />
+      <BidonsModal
+        open={modal === 'bidons_sold'}
+        onClose={() => setModal(null)}
+        box={d?.bidons_sold ?? null}
+        title="Satılan bidon"
+        hint="Çatdırılmada müştəriyə verilən dolu bidon sayı. Anbar götürmələri buraya daxil deyil."
+      />
+      <BidonsModal
+        open={modal === 'bidons_taken'}
+        onClose={() => setModal(null)}
+        box={d?.bidons_taken ?? null}
+        title="Götürülən bidon"
+        hint="Müştəridən alınan boş bidon sayı (çatdırılma + pickup)."
+      />
     </>
   );
 }
@@ -192,6 +240,8 @@ function CourierDashboardCard({ row }: { row: HistoryDashboardByCourier }) {
         <Metric label="Kuryerdə" value={d.courier_balance?.total ?? 0} />
         <Metric label="Xərclər" value={d.expenses?.total ?? 0} />
         <Metric label="Qalıq" value={d.net_balance?.total ?? 0} highlight />
+        <MetricCount label="Satılan bidon" value={d.bidons_sold?.total ?? 0} />
+        <MetricCount label="Götürülən bidon" value={d.bidons_taken?.total ?? 0} />
       </dl>
     </div>
   );
@@ -212,6 +262,15 @@ function Metric({
       <dd className={`font-semibold ${highlight ? 'text-emerald-700' : 'text-slate-800'}`}>
         {formatCurrency(value)}
       </dd>
+    </div>
+  );
+}
+
+function MetricCount({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <dt className="text-slate-400">{label}</dt>
+      <dd className="font-semibold text-slate-800">{value} bidon</dd>
     </div>
   );
 }
@@ -349,9 +408,14 @@ function DebtGivenModal({
             >
               <div>
                 <p className="font-medium text-slate-900">{row.customer}</p>
-                {row.order_id != null && (
-                  <p className="text-xs text-slate-500">Sifariş #{row.order_id}</p>
-                )}
+                <p className="text-xs text-slate-500">
+                  {row.order_id != null ? `Sifariş #${row.order_id}` : null}
+                  {row.recorded_by_name
+                    ? `${row.order_id != null ? ' · ' : ''}${row.recorded_by_name}${
+                        row.recorded_by_role === 'admin' ? ' (admin)' : ''
+                      }`
+                    : null}
+                </p>
               </div>
               <span className="font-semibold text-emerald-700">{formatCurrency(row.amount)}</span>
             </li>
@@ -375,8 +439,7 @@ function CreditModal({
   return (
     <Modal open={open} onClose={onClose} title="Nişə (ödənilməmiş)" size="md">
       <p className="mb-3 text-xs text-slate-500">
-        Yalnız nişə ilə tamamlanmış və hələ ödənilməmiş sifarişlər. Borc ödəniləndə bu qutudan
-        çıxır.
+        Ödənilməmiş qalıqlar: tam nişə və qismən nağd/kart. Borc ödəniləndə bu qutudan çıxır.
       </p>
       {orders.length === 0 ? (
         <p className="text-sm text-slate-500">
@@ -518,6 +581,57 @@ function ExpensesModal({
             </tbody>
           </table>
         </TableScroll>
+      )}
+    </Modal>
+  );
+}
+
+function BidonsModal({
+  open,
+  onClose,
+  box,
+  title,
+  hint,
+}: {
+  open: boolean;
+  onClose: () => void;
+  box: HistoryDashboardBidonBox | null;
+  title: string;
+  hint: string;
+}) {
+  const items = box?.items ?? [];
+  return (
+    <Modal open={open} onClose={onClose} title={title} size="md">
+      <p className="mb-3 text-xs text-slate-500">{hint}</p>
+      <p className="mb-3 rounded-lg bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900 ring-1 ring-sky-100">
+        {box?.total ?? 0} bidon
+        {box?.count ? (
+          <span className="ml-2 font-normal text-sky-700/80">· {box.count} sifariş</span>
+        ) : null}
+      </p>
+      {items.length === 0 ? (
+        <p className="text-sm text-slate-500">Bu periodda qeyd yoxdur.</p>
+      ) : (
+        <ul className="max-h-72 space-y-2 overflow-y-auto text-sm">
+          {items.map((row, i) => (
+            <li
+              key={`${row.order_id}-${i}`}
+              className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium text-slate-900">
+                  {row.customer || `Sifariş #${row.order_id}`}
+                </p>
+                <p className="text-xs text-slate-500">
+                  #{row.order_id}
+                  {row.courier_name ? ` · ${row.courier_name}` : ''}
+                  {row.completed_at ? ` · ${formatDateTime(row.completed_at)}` : ''}
+                </p>
+              </div>
+              <span className="shrink-0 font-semibold text-sky-700">{row.bidons} bidon</span>
+            </li>
+          ))}
+        </ul>
       )}
     </Modal>
   );

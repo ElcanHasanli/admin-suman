@@ -588,6 +588,21 @@ export function normalizeHistoryDashboard(
       total: Number(raw?.net_balance?.total) || 0,
       count: Number(raw?.net_balance?.count) || 0,
     },
+    bidons_sold: normalizeBidonBox(raw?.bidons_sold, 'Satılan bidon'),
+    bidons_taken: normalizeBidonBox(raw?.bidons_taken, 'Götürülən bidon'),
+  };
+}
+
+function normalizeBidonBox(
+  raw?: Partial<HistoryDashboard['bidons_sold']> | null,
+  fallbackLabel?: string
+): HistoryDashboard['bidons_sold'] {
+  return {
+    total: Number(raw?.total) || 0,
+    count: Number(raw?.count) || 0,
+    unit: raw?.unit || 'bidon',
+    label: raw?.label || fallbackLabel,
+    items: Array.isArray(raw?.items) ? raw.items : [],
   };
 }
 
@@ -620,7 +635,12 @@ export async function getHistoryDashboard(
     period: data.period,
     dashboard: normalizeHistoryDashboard(data.dashboard),
     couriers: data.couriers ?? [],
-    by_courier: Array.isArray(data.by_courier) ? data.by_courier : [],
+    by_courier: Array.isArray(data.by_courier)
+      ? data.by_courier.map((row) => ({
+          ...row,
+          dashboard: normalizeHistoryDashboard(row.dashboard),
+        }))
+      : [],
   };
 }
 

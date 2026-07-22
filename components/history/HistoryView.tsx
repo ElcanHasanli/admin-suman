@@ -123,7 +123,12 @@ export function HistoryView() {
           setDashboard(normalizeHistoryDashboard(histData.dashboard));
         }
         if (histData.by_courier) {
-          setByCourier(histData.by_courier);
+          setByCourier(
+            histData.by_courier.map((row) => ({
+              ...row,
+              dashboard: normalizeHistoryDashboard(row.dashboard),
+            }))
+          );
         }
       } else {
         setOrders([]);
