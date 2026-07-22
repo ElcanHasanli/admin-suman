@@ -191,11 +191,9 @@ export function HistoryDashboardCards({
           subtitle={
             loading
               ? undefined
-              : `ümumi: ${formatCurrency(d?.deposits?.current_total ?? 0)}${
-                  d?.deposits?.removed
-                    ? ` · çıxan ${formatCurrency(d.deposits.removed)}`
-                    : ''
-                }`
+              : d?.deposits?.count
+                ? `${d.deposits.count} əməliyyat`
+                : 'Bu periodda daxil'
           }
           icon={<PiggyBank size={20} />}
           accent="amber"
@@ -678,12 +676,9 @@ function DepositsModal({
   const entries = box?.entries ?? [];
   return (
     <Modal open={open} onClose={onClose} title="Depozit" size="md">
-      <p className="mb-3 text-xs text-slate-500">
-        Period üzrə depozit daxil/çıxış. Ümumi depozit hazırda müştərilərdə saxlanan cəmdir.
-      </p>
-      <dl className="mb-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+      <dl className="mb-4 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg bg-emerald-50 px-3 py-2 ring-1 ring-emerald-100">
-          <dt className="text-emerald-700/80">Daxil</dt>
+          <dt className="text-emerald-700/80">Girən</dt>
           <dd className="font-semibold text-emerald-800">
             {formatCurrency(box?.entered ?? box?.total ?? 0)}
           </dd>
@@ -691,16 +686,6 @@ function DepositsModal({
         <div className="rounded-lg bg-rose-50 px-3 py-2 ring-1 ring-rose-100">
           <dt className="text-rose-700/80">Çıxan</dt>
           <dd className="font-semibold text-rose-800">{formatCurrency(box?.removed ?? 0)}</dd>
-        </div>
-        <div className="rounded-lg bg-sky-50 px-3 py-2 ring-1 ring-sky-100">
-          <dt className="text-sky-700/80">Net</dt>
-          <dd className="font-semibold text-sky-900">{formatCurrency(box?.net ?? 0)}</dd>
-        </div>
-        <div className="rounded-lg bg-amber-50 px-3 py-2 ring-1 ring-amber-100">
-          <dt className="text-amber-700/80">Ümumi indi</dt>
-          <dd className="font-semibold text-amber-900">
-            {formatCurrency(box?.current_total ?? 0)}
-          </dd>
         </div>
       </dl>
       {entries.length === 0 ? (
