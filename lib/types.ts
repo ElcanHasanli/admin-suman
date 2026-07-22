@@ -53,6 +53,10 @@ export interface Customer {
   price: number | string;
   active_bidons: number;
   debt: number | string;
+  /** Müştəridə saxlanan depozit (AZN) */
+  deposit?: number | string;
+  /** Müştərinin daimi qeydi (sifariş qeydlərindən ayrı) */
+  notes?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -67,6 +71,8 @@ export interface CustomerPayload {
   price: number;
   active_bidons: number;
   debt: number;
+  deposit?: number;
+  notes?: string | null;
 }
 
 export interface CustomersListParams {
@@ -94,6 +100,26 @@ export interface DebtPayment {
   created_at: string;
 }
 
+export type DepositEntryType = 'create' | 'adjust' | 'delete';
+
+export interface DepositEntry {
+  id?: number;
+  customer_id?: number;
+  customer?: string;
+  customer_name?: string;
+  amount: number | string;
+  previous_deposit?: number | string;
+  new_deposit?: number | string;
+  entry_type: DepositEntryType | string;
+  recorded_by_name?: string;
+  created_at?: string;
+}
+
+export interface CustomerDepositTotals {
+  current_total: number;
+  customers_with_deposit: number;
+}
+
 export interface CustomerStats {
   total_orders: number;
   completed_orders: number;
@@ -108,11 +134,18 @@ export interface CustomerDetailResponse {
   stats: CustomerStats;
   recent_orders: Order[];
   debt_payments: DebtPayment[];
+  deposit_entries?: DepositEntry[];
 }
 
 export interface UpdateCustomerResponse {
   customer: Customer;
   debt_payment?: DebtPayment | null;
+  deposit_entry?: {
+    amount: number;
+    previous_deposit: number;
+    new_deposit: number;
+    entry_type: DepositEntryType | string;
+  } | null;
 }
 
 export interface Courier {
@@ -312,6 +345,27 @@ export interface HistoryDashboardBidonBox {
   items: HistoryDashboardBidonItem[];
 }
 
+export interface HistoryDashboardDepositEntry {
+  customer?: string;
+  amount: number | string;
+  entry_type: DepositEntryType | string;
+  recorded_by_name?: string;
+  created_at?: string;
+}
+
+/** Period üzrə depozit ledger qutusu */
+export interface HistoryDashboardDepositsBox {
+  total: number;
+  entered: number;
+  removed: number;
+  net: number;
+  count: number;
+  /** İndi müştərilərdəki ümumi depozit (perioddan asılı deyil) */
+  current_total: number;
+  label?: string;
+  entries: HistoryDashboardDepositEntry[];
+}
+
 export interface HistoryDashboard {
   sales: HistoryDashboardSales;
   debt_given: HistoryDashboardDebtGiven;
@@ -324,6 +378,8 @@ export interface HistoryDashboard {
   bidons_sold: HistoryDashboardBidonBox;
   /** Alınan boş bidon */
   bidons_taken: HistoryDashboardBidonBox;
+  /** Depozit daxil/çıxış (ledger) */
+  deposits: HistoryDashboardDepositsBox;
 }
 
 /** Filter olmadan — hər kuryer üçün eyni qutular */
@@ -379,6 +435,8 @@ export interface HistoryResponse {
   orders: Order[];
   expenses?: Expense[];
   debtPayments?: DebtPayment[];
+  depositEntries?: DepositEntry[];
+  deposit_totals?: CustomerDepositTotals;
 }
 
 export type DateRangePreset = 'yesterday' | 'today' | 'custom';

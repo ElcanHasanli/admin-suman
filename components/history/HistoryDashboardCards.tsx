@@ -11,16 +11,19 @@ import {
   Scale,
   PackageCheck,
   PackageMinus,
+  PiggyBank,
 } from 'lucide-react';
 import type {
   Expense,
   HistoryDashboard,
   HistoryDashboardBidonBox,
   HistoryDashboardByCourier,
+  HistoryDashboardDepositsBox,
 } from '@/lib/types';
 import {
   formatCurrency,
   formatDateTime,
+  getDepositEntryTypeLabel,
   getExpenseAuthorLabel,
   getOrderCustomerName,
   getOrderExtraLabel,
@@ -40,6 +43,7 @@ type ModalKind =
   | 'expenses'
   | 'bidons_sold'
   | 'bidons_taken'
+  | 'deposits'
   | null;
 
 export function HistoryDashboardCards({
@@ -177,6 +181,26 @@ export function HistoryDashboardCards({
           accent="violet"
           onClick={d?.bidons_taken ? () => setModal('bidons_taken') : undefined}
         />
+        <StatCard
+          title="Depozit"
+          value={
+            loading
+              ? '...'
+              : formatCurrency(d?.deposits?.entered ?? d?.deposits?.total ?? 0)
+          }
+          subtitle={
+            loading
+              ? undefined
+              : `ümumi: ${formatCurrency(d?.deposits?.current_total ?? 0)}${
+                  d?.deposits?.removed
+                    ? ` · çıxan ${formatCurrency(d.deposits.removed)}`
+                    : ''
+                }`
+          }
+          icon={<PiggyBank size={20} />}
+          accent="amber"
+          onClick={d?.deposits ? () => setModal('deposits') : undefined}
+        />
       </div>
 
       {showByCourier && byCourier && byCourier.length > 0 && (
@@ -219,6 +243,11 @@ export function HistoryDashboardCards({
         box={d?.bidons_taken ?? null}
         title="Götürülən bidon"
         hint="Müştəridən alınan boş bidon sayı (çatdırılma + pickup)."
+      />
+      <DepositsModal
+        open={modal === 'deposits'}
+        onClose={() => setModal(null)}
+        box={d?.deposits ?? null}
       />
     </>
   );
@@ -631,6 +660,81 @@ function BidonsModal({
               <span className="shrink-0 font-semibold text-sky-700">{row.bidons} bidon</span>
             </li>
           ))}
+        </ul>
+      )}
+    </Modal>
+  );
+}
+
+function DepositsModal({
+  open,
+  onClose,
+  box,
+}: {
+  open: boolean;
+  onClose: () => void;
+  box: HistoryDashboardDepositsBox | null;
+}) {
+  const entries = box?.entries ?? [];
+  return (
+    <Modal open={open} onClose={onClose} title="Depozit" size="md">
+      <p className="mb-3 text-xs text-slate-500">
+        Period üzrə depozit daxil/çıxış. Ümumi depozit hazırda müştərilərdə saxlanan cəmdir.
+      </p>
+      <dl className="mb-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+        <div className="rounded-lg bg-emerald-50 px-3 py-2 ring-1 ring-emerald-100">
+          <dt className="text-emerald-700/80">Daxil</dt>
+          <dd className="font-semibold text-emerald-800">
+            {formatCurrency(box?.entered ?? box?.total ?? 0)}
+          </dd>
+        </div>
+        <div className="rounded-lg bg-rose-50 px-3 py-2 ring-1 ring-rose-100">
+          <dt className="text-rose-700/80">Çıxan</dt>
+          <dd className="font-semibold text-rose-800">{formatCurrency(box?.removed ?? 0)}</dd>
+        </div>
+        <div className="rounded-lg bg-sky-50 px-3 py-2 ring-1 ring-sky-100">
+          <dt className="text-sky-700/80">Net</dt>
+          <dd className="font-semibold text-sky-900">{formatCurrency(box?.net ?? 0)}</dd>
+        </div>
+        <div className="rounded-lg bg-amber-50 px-3 py-2 ring-1 ring-amber-100">
+          <dt className="text-amber-700/80">Ümumi indi</dt>
+          <dd className="font-semibold text-amber-900">
+            {formatCurrency(box?.current_total ?? 0)}
+          </dd>
+        </div>
+      </dl>
+      {entries.length === 0 ? (
+        <p className="text-sm text-slate-500">Bu periodda depozit qeydi yoxdur.</p>
+      ) : (
+        <ul className="max-h-72 space-y-2 overflow-y-auto text-sm">
+          {entries.map((row, i) => {
+            const amount = parseMoney(row.amount);
+            return (
+              <li
+                key={i}
+                className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-100"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-slate-900">
+                    {row.customer || '—'}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {getDepositEntryTypeLabel(row.entry_type)}
+                    {row.recorded_by_name ? ` · ${row.recorded_by_name}` : ''}
+                    {row.created_at ? ` · ${formatDateTime(row.created_at)}` : ''}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 font-semibold ${
+                    amount < 0 ? 'text-rose-600' : 'text-emerald-700'
+                  }`}
+                >
+                  {amount >= 0 ? '+' : ''}
+                  {formatCurrency(amount)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </Modal>

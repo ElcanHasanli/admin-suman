@@ -2,6 +2,7 @@ import type {
   Courier,
   Customer,
   CustomerDetailResponse,
+  CustomerDepositTotals,
   CustomerOrderPreviewResponse,
   CustomerPayload,
   CustomersListParams,
@@ -339,6 +340,10 @@ export async function getCustomerById(id: number): Promise<CustomerDetailRespons
   return request<CustomerDetailResponse>(`/customers/${id}`);
 }
 
+export async function getCustomerDepositTotals(): Promise<CustomerDepositTotals> {
+  return request<CustomerDepositTotals>('/customers/deposit-totals');
+}
+
 export async function getCustomerOrderPreview(
   id: number
 ): Promise<CustomerOrderPreviewResponse> {
@@ -541,7 +546,16 @@ function normalizeHistoryResponse(data: HistoryApiResponse): HistoryResponse {
     (data as { expenses_list?: Expense[] }).expenses_list ??
     [];
   const debtPayments = data.debtPayments ?? data.debt_payments ?? [];
-  return { ...data, expenses, debtPayments };
+  const depositEntries =
+    data.depositEntries ??
+    (data as { deposit_entries?: HistoryResponse['depositEntries'] }).deposit_entries ??
+    [];
+  return {
+    ...data,
+    expenses,
+    debtPayments,
+    depositEntries: Array.isArray(depositEntries) ? depositEntries : [],
+  };
 }
 
 /** API natamam/köhnə cavab gətirəndə UI crash olmasın */
@@ -590,6 +604,7 @@ export function normalizeHistoryDashboard(
     },
     bidons_sold: normalizeBidonBox(raw?.bidons_sold, 'Satılan bidon'),
     bidons_taken: normalizeBidonBox(raw?.bidons_taken, 'Götürülən bidon'),
+    deposits: normalizeDepositsBox(raw?.deposits),
   };
 }
 
@@ -603,6 +618,21 @@ function normalizeBidonBox(
     unit: raw?.unit || 'bidon',
     label: raw?.label || fallbackLabel,
     items: Array.isArray(raw?.items) ? raw.items : [],
+  };
+}
+
+function normalizeDepositsBox(
+  raw?: Partial<HistoryDashboard['deposits']> | null
+): HistoryDashboard['deposits'] {
+  return {
+    total: Number(raw?.total ?? raw?.entered) || 0,
+    entered: Number(raw?.entered ?? raw?.total) || 0,
+    removed: Number(raw?.removed) || 0,
+    net: Number(raw?.net) || 0,
+    count: Number(raw?.count) || 0,
+    current_total: Number(raw?.current_total) || 0,
+    label: raw?.label || 'Depozit',
+    entries: Array.isArray(raw?.entries) ? raw.entries : [],
   };
 }
 

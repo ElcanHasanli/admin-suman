@@ -12,18 +12,27 @@ import {
   Phone,
   MapPin,
   Droplets,
+  StickyNote,
+  PiggyBank,
 } from 'lucide-react';
 import { getCustomerById } from '@/lib/api';
-import type { Customer, CustomerDetailResponse, DebtPayment, Order } from '@/lib/types';
+import type {
+  CustomerDetailResponse,
+  DebtPayment,
+  DepositEntry,
+  Order,
+} from '@/lib/types';
 import {
   formatCurrency,
   formatDateTime,
   getCustomerActiveBidons,
   getCustomerDebt,
+  getCustomerDeposit,
   getCustomerName,
   getCustomerPhone,
   getCustomerPhone2,
   getCustomerPrice,
+  getDepositEntryTypeLabel,
   getOrderBidonCount,
   getOrderCourierName,
   getOrderPaidLabel,
@@ -95,8 +104,9 @@ export function CustomerDetailView({ customerId }: { customerId: number }) {
     );
   }
 
-  const { customer, stats, recent_orders, debt_payments } = data;
+  const { customer, stats, recent_orders, debt_payments, deposit_entries } = data;
   const debt = getCustomerDebt(customer);
+  const deposit = getCustomerDeposit(customer);
 
   return (
     <div className="space-y-6">
@@ -180,13 +190,33 @@ export function CustomerDetailView({ customerId }: { customerId: number }) {
             value={String(getCustomerActiveBidons(customer))}
           />
           <InfoRow
+            icon={<PiggyBank size={18} />}
+            label="Depozit"
+            value={
+              <span className="font-semibold text-slate-800">{formatCurrency(deposit)}</span>
+            }
+          />
+          <InfoRow
             icon={<Banknote size={18} />}
             label="Cari borc"
-            className="sm:col-span-2"
             value={
               <span className={debt > 0 ? 'text-lg font-bold text-red-600' : 'font-semibold text-slate-800'}>
                 {formatCurrency(debt)}
               </span>
+            }
+          />
+          <InfoRow
+            icon={<StickyNote size={18} />}
+            label="Qeyd"
+            className="sm:col-span-2"
+            value={
+              customer.notes?.trim() ? (
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">
+                  {customer.notes}
+                </p>
+              ) : (
+                <span className="text-slate-400">—</span>
+              )
             }
           />
         </div>
@@ -224,6 +254,8 @@ export function CustomerDetailView({ customerId }: { customerId: number }) {
         orders={recent_orders}
         onOrderClick={(id) => router.push(`/dashboard/orders/?order_id=${id}`)}
       />
+
+      <DepositEntriesTable entries={deposit_entries ?? []} />
 
       <DebtPaymentsTable payments={debt_payments} />
 
@@ -365,6 +397,96 @@ function RecentOrdersTable({
           </tbody>
         </table>
       </TableScroll>
+      </DesktopOnly>
+    </Card>
+  );
+}
+
+function DepositEntriesTable({ entries }: { entries: DepositEntry[] }) {
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
+        <h3 className="font-semibold text-slate-900">Depozit tarixçəsi ({entries.length})</h3>
+      </div>
+      <MobileOnly>
+        <div className="p-3">
+          {entries.length === 0 ? (
+            <MobileEmpty>Depozit qeydi yoxdur</MobileEmpty>
+          ) : (
+            <MobileCardList>
+              {entries.map((e, i) => {
+                const amount = parseMoney(e.amount);
+                return (
+                  <MobileCard key={e.id ?? i}>
+                    <MobileCardTitle
+                      subtitle={e.created_at ? formatDateTime(e.created_at) : undefined}
+                    >
+                      <span className={amount < 0 ? 'text-rose-600' : 'text-emerald-700'}>
+                        {amount >= 0 ? '+' : ''}
+                        {formatCurrency(amount)}
+                      </span>
+                    </MobileCardTitle>
+                    <MobileCardGrid>
+                      <MobileCardField
+                        label="Növ"
+                        value={getDepositEntryTypeLabel(e.entry_type)}
+                      />
+                      <MobileCardField label="Qeyd edən" value={e.recorded_by_name || '—'} />
+                    </MobileCardGrid>
+                  </MobileCard>
+                );
+              })}
+            </MobileCardList>
+          )}
+        </div>
+      </MobileOnly>
+      <DesktopOnly>
+        <TableScroll minWidth={480}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase text-slate-500">
+                <th className="px-3 py-2.5 sm:px-5">Tarix</th>
+                <th className="px-3 py-2.5 sm:px-5">Növ</th>
+                <th className="px-3 py-2.5 sm:px-5">Məbləğ</th>
+                <th className="px-3 py-2.5 sm:px-5">Qeyd edən</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-10 text-center text-slate-400 sm:px-5">
+                    Depozit qeydi yoxdur
+                  </td>
+                </tr>
+              ) : (
+                entries.map((e, i) => {
+                  const amount = parseMoney(e.amount);
+                  return (
+                    <tr key={e.id ?? i} className="border-b border-slate-50">
+                      <td className="whitespace-nowrap px-3 py-3 sm:px-5">
+                        {e.created_at ? formatDateTime(e.created_at) : '—'}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600 sm:px-5">
+                        {getDepositEntryTypeLabel(e.entry_type)}
+                      </td>
+                      <td
+                        className={`px-3 py-3 font-semibold sm:px-5 ${
+                          amount < 0 ? 'text-rose-600' : 'text-emerald-700'
+                        }`}
+                      >
+                        {amount >= 0 ? '+' : ''}
+                        {formatCurrency(amount)}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600 sm:px-5">
+                        {e.recorded_by_name || '—'}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </TableScroll>
       </DesktopOnly>
     </Card>
   );

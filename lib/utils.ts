@@ -47,6 +47,8 @@ export function buildCustomerPayload(form: {
   price: number;
   activeBidons: number;
   debt: number;
+  deposit: number;
+  notes: string;
 }): CustomerPayload {
   const payload: CustomerPayload = {
     full_name: form.fullName.trim(),
@@ -55,6 +57,8 @@ export function buildCustomerPayload(form: {
     price: form.price,
     active_bidons: form.activeBidons,
     debt: form.debt,
+    deposit: form.deposit,
+    notes: form.notes.trim() || null,
   };
   const p2 = form.phone2.trim();
   if (p2) payload.phone2 = p2;
@@ -70,6 +74,8 @@ export function customerToFormFields(c: Customer) {
     price: String(getCustomerPrice(c) || ''),
     activeBidons: String(getCustomerActiveBidons(c)),
     debt: String(getCustomerDebt(c)),
+    deposit: String(getCustomerDeposit(c) || ''),
+    notes: c.notes?.trim() || '',
   };
 }
 
@@ -151,6 +157,23 @@ export function getCustomerActiveBidons(customer: Customer): number {
 export function getCustomerDebt(customer: Customer): number {
   const debt = customer.debt ?? 0;
   return typeof debt === 'string' ? parseFloat(debt) : debt;
+}
+
+export function getCustomerDeposit(customer: Customer): number {
+  return parseMoney(customer.deposit);
+}
+
+export function getDepositEntryTypeLabel(type?: string): string {
+  switch ((type || '').toLowerCase()) {
+    case 'create':
+      return 'Yaradılma';
+    case 'adjust':
+      return 'Düzəliş';
+    case 'delete':
+      return 'Silinmə';
+    default:
+      return type || '—';
+  }
 }
 
 export function getOrderCustomerName(order: Order): string {

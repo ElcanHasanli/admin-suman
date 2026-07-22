@@ -8,6 +8,7 @@ import {
   customerToFormFields,
   formatCurrency,
   getCustomerName,
+  parseMoney,
 } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -22,6 +23,8 @@ const emptyForm = {
   price: '',
   activeBidons: '',
   debt: '',
+  deposit: '',
+  notes: '',
 };
 
 export function CustomerFormModal({
@@ -51,6 +54,7 @@ export function CustomerFormModal({
     const price = Number(form.price);
     const activeBidons = form.activeBidons === '' ? 0 : Number(form.activeBidons);
     const debt = form.debt === '' ? 0 : Number(form.debt);
+    const deposit = form.deposit === '' ? 0 : Number(form.deposit);
 
     if (!form.fullName.trim() || !form.address.trim() || !form.phone.trim()) {
       setToast({ message: 'Ad, telefon və ünvan mütləqdir', type: 'error' });
@@ -58,6 +62,10 @@ export function CustomerFormModal({
     }
     if (isNaN(price) || price <= 0) {
       setToast({ message: 'Qiymət düzgün deyil', type: 'error' });
+      return;
+    }
+    if (isNaN(deposit) || deposit < 0) {
+      setToast({ message: 'Depozit 0 və ya daha böyük olmalıdır', type: 'error' });
       return;
     }
 
@@ -69,20 +77,27 @@ export function CustomerFormModal({
       price,
       activeBidons,
       debt,
+      deposit,
+      notes: form.notes,
     });
 
     setSaving(true);
     try {
       if (editId) {
         const result = await updateCustomer(editId, payload);
+        const parts: string[] = ['Müştəri yeniləndi'];
         if (result.debt_payment && parseFloat(String(result.debt_payment.amount)) > 0) {
-          setToast({
-            message: `Müştəri yeniləndi. Borc ödənişi: ${formatCurrency(result.debt_payment.amount)}`,
-            type: 'success',
-          });
-        } else {
-          setToast({ message: 'Müştəri yeniləndi', type: 'success' });
+          parts.push(`Borc ödənişi: ${formatCurrency(result.debt_payment.amount)}`);
         }
+        if (result.deposit_entry) {
+          const delta = parseMoney(result.deposit_entry.amount);
+          parts.push(
+            `Depozit: ${formatCurrency(result.deposit_entry.previous_deposit)} → ${formatCurrency(
+              result.deposit_entry.new_deposit
+            )} (${delta >= 0 ? '+' : ''}${formatCurrency(delta)})`
+          );
+        }
+        setToast({ message: parts.join('. '), type: 'success' });
       } else {
         await createCustomer(payload);
         setToast({ message: 'Yeni müştəri əlavə edildi', type: 'success' });
@@ -174,9 +189,32 @@ export function CustomerFormModal({
             value={form.debt}
             onChange={(e) => setForm({ ...form, debt: e.target.value })}
           />
+          <Input
+            label="Depozit (₼)"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.deposit}
+            onChange={(e) => setForm({ ...form, deposit: e.target.value })}
+            placeholder="20"
+          />
+          <div className="sm:col-span-2">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Qeyd</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              rows={3}
+              placeholder="Məs: Girişdə 2 bidon — depozit 20"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Müştərinin daimi qeydi (sifariş qeydlərindən ayrıdır)
+            </p>
+          </div>
           {editId && (
             <p className="text-xs text-slate-500 sm:col-span-2">
-              Borc azaldıqda ödənilən məbləğ tarixçədə «Borc ödənişi» kimi qeyd olunur.
+              Borc azaldıqda ödənilən məbləğ tarixçədə «Borc ödənişi» kimi qeyd olunur. Depozit
+              dəyişikliyi də depozit tarixçəsinə yazılır.
             </p>
           )}
         </form>

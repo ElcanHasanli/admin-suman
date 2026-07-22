@@ -7,9 +7,10 @@ import {
   CUSTOMERS_DEFAULT_PAGE_SIZE,
   deleteCustomer,
   exportCustomersExcel,
+  getCustomerDepositTotals,
   getCustomers,
 } from '@/lib/api';
-import type { Customer } from '@/lib/types';
+import type { Customer, CustomerDepositTotals } from '@/lib/types';
 import {
   downloadBlob,
   getExportErrorMessage,
@@ -20,6 +21,7 @@ import {
   formatLocalDate,
   getCustomerActiveBidons,
   getCustomerDebt,
+  getCustomerDeposit,
   getCustomerName,
   getCustomerPhone,
   getCustomerPrice,
@@ -53,6 +55,7 @@ export function CustomersView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [depositTotals, setDepositTotals] = useState<CustomerDepositTotals | null>(null);
   const { requestConfirm, ConfirmDialog } = useConfirm();
 
   const showToast = (message: string, type: ToastType = 'info') =>
@@ -70,13 +73,17 @@ export function CustomersView() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getCustomers({
-        page,
-        limit: CUSTOMERS_DEFAULT_PAGE_SIZE,
-        q: debouncedSearch || undefined,
-      });
+      const [data, totals] = await Promise.all([
+        getCustomers({
+          page,
+          limit: CUSTOMERS_DEFAULT_PAGE_SIZE,
+          q: debouncedSearch || undefined,
+        }),
+        getCustomerDepositTotals().catch(() => null),
+      ]);
       setCustomers(data.customers);
       setTotal(data.total);
+      if (totals) setDepositTotals(totals);
 
       const maxPage = Math.max(1, Math.ceil(data.total / CUSTOMERS_DEFAULT_PAGE_SIZE));
       if (page > maxPage && maxPage >= 1) {
@@ -143,6 +150,17 @@ export function CustomersView() {
         onCreate={openCreate}
       />
 
+      {depositTotals && (
+        <p className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-900">
+          Ümumi depozit:{' '}
+          <span className="font-semibold">{formatCurrency(depositTotals.current_total)}</span>
+          <span className="text-amber-800/70">
+            {' '}
+            · {depositTotals.customers_with_deposit} müştəri
+          </span>
+        </p>
+      )}
+
       <Card className="overflow-hidden">
         <MobileOnly>
           <div className="p-3">
@@ -163,6 +181,10 @@ export function CustomersView() {
                         value={formatCurrency(getCustomerPrice(c))}
                       />
                       <MobileCardField label="Bidon" value={getCustomerActiveBidons(c)} />
+                      <MobileCardField
+                        label="Depozit"
+                        value={formatCurrency(getCustomerDeposit(c))}
+                      />
                       <MobileCardField
                         label="Borc"
                         value={formatCurrency(getCustomerDebt(c))}
@@ -372,7 +394,7 @@ function CustomersTable({
   onDelete: (id: number, name: string) => void;
 }) {
   return (
-    <TableScroll minWidth={760}>
+    <TableScroll minWidth={860}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -381,6 +403,7 @@ function CustomersTable({
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Ünvan</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Qiymət</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Bidon</th>
+            <th className="px-3 py-2.5 sm:px-5 sm:py-3">Depozit</th>
             <th className="px-3 py-2.5 sm:px-5 sm:py-3">Borc</th>
             <th className="px-3 py-2.5 text-right sm:px-5 sm:py-3">Əməliyyat</th>
           </tr>
@@ -388,13 +411,13 @@ function CustomersTable({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={7} className="px-3 py-12 text-center text-slate-400 sm:px-5">
+              <td colSpan={8} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                 Yüklənir...
               </td>
             </tr>
           ) : customers.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-3 py-12 text-center text-slate-400 sm:px-5">
+              <td colSpan={8} className="px-3 py-12 text-center text-slate-400 sm:px-5">
                 Müştəri tapılmadı
               </td>
             </tr>
@@ -421,6 +444,9 @@ function CustomersTable({
                 </td>
                 <td className="px-3 py-3 font-semibold text-sky-700 sm:px-5 sm:py-3.5">
                   {getCustomerActiveBidons(c)}
+                </td>
+                <td className="px-3 py-3 font-medium text-slate-700 sm:px-5 sm:py-3.5">
+                  {formatCurrency(getCustomerDeposit(c))}
                 </td>
                 <td
                   className={`px-3 py-3 font-semibold sm:px-5 sm:py-3.5 ${
