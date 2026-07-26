@@ -349,6 +349,26 @@ export function getOrderBidonCount(order: Order): number {
   return order.bidons_count ?? 0;
 }
 
+/** Verilən dolu bidon — tamamlanmayıbsa bidons_count-a fallback */
+export function getOrderFullBidonsGiven(order: Order): number {
+  if (order.full_bidons_given != null) return Number(order.full_bidons_given) || 0;
+  return order.bidons_count ?? 0;
+}
+
+/** Götürülən boş bidon — bilinmirsə null */
+export function getOrderEmptyBidonsReturned(order: Order): number | null {
+  if (order.empty_bidons_returned == null) return null;
+  return Number(order.empty_bidons_returned) || 0;
+}
+
+/** "2 dolu · 2 boş" formatında qısa xülasə */
+export function formatOrderBidonSummary(order: Order): string {
+  const full = getOrderFullBidonsGiven(order);
+  const empty = getOrderEmptyBidonsReturned(order);
+  if (empty == null) return `${full} dolu`;
+  return `${full} dolu · ${empty} boş`;
+}
+
 export function getOrderStatus(order: Order): string {
   return (order.status || '').toLowerCase();
 }

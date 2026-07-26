@@ -182,6 +182,10 @@ export interface Order {
   customer?: { name?: string; surname?: string; phone?: string; display_name?: string };
   courier_name?: string;
   bidons_count?: number;
+  /** Tamamlamada müştəriyə verilən dolu bidon (tamamlanmamışda null) */
+  full_bidons_given?: number | null;
+  /** Tamamlamada müştəridən alınan boş bidon (tamamlanmamışda null) */
+  empty_bidons_returned?: number | null;
   unit_price?: number | string;
   address?: string;
   price?: number | string;

@@ -33,7 +33,9 @@ import {
   getCustomerPhone2,
   getCustomerPrice,
   getDepositEntryTypeLabel,
-  getOrderBidonCount,
+  getOrderEmptyBidonsReturned,
+  getOrderFullBidonsGiven,
+  formatOrderBidonSummary,
   getOrderCourierName,
   getOrderPaidLabel,
   getOrderStatusLabel,
@@ -326,7 +328,7 @@ function RecentOrdersTable({
                     {formatDateTime(o.created_at)}
                   </MobileCardTitle>
                   <MobileCardGrid>
-                    <MobileCardField label="Bidon" value={getOrderBidonCount(o)} />
+                    <MobileCardField label="Bidon" value={formatOrderBidonSummary(o)} />
                     <MobileCardField label="Məbləğ" value={formatCurrency(parseMoney(o.price))} />
                     <MobileCardField label="Ödəniş" value={getPaymentTypeLabel(o.payment_type)} />
                     <MobileCardField
@@ -348,7 +350,8 @@ function RecentOrdersTable({
             <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase text-slate-500">
               <th className="px-3 py-2.5 sm:px-5">Tarix</th>
               <th className="px-3 py-2.5 sm:px-5">Status</th>
-              <th className="px-3 py-2.5 sm:px-5">Bidon</th>
+              <th className="px-3 py-2.5 sm:px-5">Verilən</th>
+              <th className="px-3 py-2.5 sm:px-5">Götürülən</th>
               <th className="px-3 py-2.5 sm:px-5">Məbləğ</th>
               <th className="px-3 py-2.5 sm:px-5">Ödəniş</th>
               <th className="px-3 py-2.5 sm:px-5">Kuryer</th>
@@ -357,12 +360,14 @@ function RecentOrdersTable({
           <tbody>
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-10 text-center text-slate-400 sm:px-5">
+                <td colSpan={7} className="px-3 py-10 text-center text-slate-400 sm:px-5">
                   Sifariş yoxdur
                 </td>
               </tr>
             ) : (
-              orders.map((o) => (
+              orders.map((o) => {
+                const empty = getOrderEmptyBidonsReturned(o);
+                return (
                 <tr
                   key={o.id}
                   onClick={() => onOrderClick(o.id)}
@@ -376,7 +381,12 @@ function RecentOrdersTable({
                       {getOrderStatusLabel(o.status)}
                     </Badge>
                   </td>
-                  <td className="px-3 py-3 sm:px-5">{getOrderBidonCount(o)}</td>
+                  <td className="px-3 py-3 font-medium text-sky-700 sm:px-5">
+                    {getOrderFullBidonsGiven(o)}
+                  </td>
+                  <td className="px-3 py-3 text-slate-600 sm:px-5">
+                    {empty == null ? '—' : empty}
+                  </td>
                   <td className="px-3 py-3 font-medium sm:px-5">
                     {formatCurrency(parseMoney(o.price))}
                   </td>
@@ -392,7 +402,8 @@ function RecentOrdersTable({
                     {getOrderCourierName(o)}
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
