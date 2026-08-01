@@ -14,6 +14,7 @@ import type {
   HistoryDashboard,
   HistoryDashboardResponse,
   HistoryPeriod,
+  HistoryQueryOptions,
   HistoryResponse,
   DebtorsListResponse,
   PayCustomerDebtResponse,
@@ -583,7 +584,9 @@ export function normalizeHistoryDashboard(
     credit: {
       total: Number(raw?.credit?.total) || 0,
       count: Number(raw?.credit?.count) || 0,
+      label: raw?.credit?.label,
       orders: Array.isArray(raw?.credit?.orders) ? raw.credit.orders : [],
+      customers: Array.isArray(raw?.credit?.customers) ? raw.credit.customers : [],
     },
     prepaid: {
       total: Number(raw?.prepaid?.total) || 0,
@@ -597,6 +600,7 @@ export function normalizeHistoryDashboard(
     expenses: {
       total: Number(raw?.expenses?.total) || 0,
       count: Number(raw?.expenses?.count) || 0,
+      items: Array.isArray(raw?.expenses?.items) ? raw.expenses.items : undefined,
     },
     net_balance: {
       total: Number(raw?.net_balance?.total) || 0,
@@ -605,6 +609,15 @@ export function normalizeHistoryDashboard(
     bidons_sold: normalizeBidonBox(raw?.bidons_sold, 'Satılan bidon'),
     bidons_taken: normalizeBidonBox(raw?.bidons_taken, 'Götürülən bidon'),
     deposits: normalizeDepositsBox(raw?.deposits),
+    net_income: raw?.net_income
+      ? {
+          total: Number(raw.net_income.total) || 0,
+          sales: Number(raw.net_income.sales) || 0,
+          expenses: Number(raw.net_income.expenses) || 0,
+          formula: raw.net_income.formula,
+          label: raw.net_income.label || 'Xalis gəlir',
+        }
+      : null,
   };
 }
 
@@ -636,33 +649,26 @@ function normalizeDepositsBox(
   };
 }
 
-function buildHistorySearchParams(
-  period: HistoryPeriod,
-  startDate?: string,
-  endDate?: string,
-  courierId?: number
-): URLSearchParams {
-  const params = new URLSearchParams({ period });
-  if (period === 'custom' && startDate && endDate) {
-    params.set('startDate', startDate);
-    params.set('endDate', endDate);
-  }
-  if (courierId) params.set('courier_id', String(courierId));
+function buildHistorySearchParams(opts: HistoryQueryOptions): URLSearchParams {
+  const params = new URLSearchParams();
+  if (opts.period) params.set('period', opts.period);
+  if (opts.date) params.set('date', opts.date);
+  if (opts.startDate) params.set('startDate', opts.startDate);
+  if (opts.endDate) params.set('endDate', opts.endDate);
+  if (opts.courierId) params.set('courier_id', String(opts.courierId));
+  if (opts.expenseQ?.trim()) params.set('expense_q', opts.expenseQ.trim());
   return params;
 }
 
-export async function getHistoryDashboard(
-  period: HistoryPeriod,
-  startDate?: string,
-  endDate?: string,
-  courierId?: number
-): Promise<HistoryDashboardResponse> {
-  const params = buildHistorySearchParams(period, startDate, endDate, courierId);
-  const data = await request<HistoryDashboardResponse & { couriers?: Courier[] }>(
-    `/history/dashboard?${params}`
-  );
+function mapDashboardResponse(
+  data: HistoryDashboardResponse & { couriers?: Courier[] }
+): HistoryDashboardResponse {
   return {
     period: data.period,
+    report: data.report,
+    startDate: data.startDate,
+    endDate: data.endDate,
+    expense_q: data.expense_q,
     dashboard: normalizeHistoryDashboard(data.dashboard),
     couriers: data.couriers ?? [],
     by_courier: Array.isArray(data.by_courier)
@@ -674,24 +680,68 @@ export async function getHistoryDashboard(
   };
 }
 
+/** @deprecated — use HistoryQueryOptions overload */
+export async function getHistoryDashboard(
+  periodOrOpts: HistoryPeriod | HistoryQueryOptions,
+  startDate?: string,
+  endDate?: string,
+  courierId?: number
+): Promise<HistoryDashboardResponse> {
+  const opts: HistoryQueryOptions =
+    typeof periodOrOpts === 'string'
+      ? { period: periodOrOpts, startDate, endDate, courierId }
+      : periodOrOpts;
+  const params = buildHistorySearchParams(opts);
+  const data = await request<HistoryDashboardResponse & { couriers?: Courier[] }>(
+    `/history/dashboard?${params}`
+  );
+  return mapDashboardResponse(data);
+}
+
 export async function getHistory(
-  period: HistoryPeriod,
+  periodOrOpts: HistoryPeriod | HistoryQueryOptions,
   startDate?: string,
   endDate?: string,
   courierId?: number
 ): Promise<HistoryResponse> {
-  const params = buildHistorySearchParams(period, startDate, endDate, courierId);
+  const opts: HistoryQueryOptions =
+    typeof periodOrOpts === 'string'
+      ? { period: periodOrOpts, startDate, endDate, courierId }
+      : periodOrOpts;
+  const params = buildHistorySearchParams(opts);
   const data = await request<HistoryApiResponse>(`/history?${params}`);
   return normalizeHistoryResponse(data);
 }
 
+export async function getMonthlyHistoryDashboard(
+  opts: HistoryQueryOptions
+): Promise<HistoryDashboardResponse> {
+  const params = buildHistorySearchParams(opts);
+  const data = await request<HistoryDashboardResponse & { couriers?: Courier[] }>(
+    `/history/monthly/dashboard?${params}`
+  );
+  return mapDashboardResponse(data);
+}
+
+export async function getMonthlyHistory(
+  opts: HistoryQueryOptions
+): Promise<HistoryResponse> {
+  const params = buildHistorySearchParams(opts);
+  const data = await request<HistoryApiResponse>(`/history/monthly?${params}`);
+  return normalizeHistoryResponse(data);
+}
+
 export async function exportHistoryExcel(
-  period: HistoryPeriod,
+  periodOrOpts: HistoryPeriod | HistoryQueryOptions,
   startDate?: string,
   endDate?: string,
   courierId?: number
 ): Promise<Blob> {
-  const params = buildHistorySearchParams(period, startDate, endDate, courierId);
+  const opts: HistoryQueryOptions =
+    typeof periodOrOpts === 'string'
+      ? { period: periodOrOpts, startDate, endDate, courierId }
+      : periodOrOpts;
+  const params = buildHistorySearchParams(opts);
   return requestBlob(`/history/export?${params}`);
 }
 

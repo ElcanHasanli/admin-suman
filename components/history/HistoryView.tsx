@@ -12,6 +12,8 @@ import {
   getCouriers,
   getHistory,
   getHistoryDashboard,
+  getMonthlyHistory,
+  getMonthlyHistoryDashboard,
   getMigrationErrorHint,
   isBackendMigrationError,
   normalizeHistoryDashboard,
@@ -23,6 +25,8 @@ import type {
   Expense,
   HistoryDashboard,
   HistoryDashboardByCourier,
+  HistoryQueryOptions,
+  HistoryReportTab,
   HistorySummary,
   Order,
 } from '@/lib/types';
@@ -34,7 +38,8 @@ import {
 import {
   formatCurrency,
   formatDateTime,
-  resolveHistoryPeriodParams,
+  resolveDailyHistoryParams,
+  resolveMonthlyHistoryParams,
   resolveExportFilenameDates,
   getExpenseCategoryLabel,
   getCourierName,
@@ -79,11 +84,14 @@ import {
 } from '@/components/ui/MobileCards';
 import { HistoryDashboardCards } from '@/components/history/HistoryDashboardCards';
 import {
-  HistoryPeriodButtons,
-  useHistoryPeriodState,
+  DailyPeriodButtons,
+  MonthlyPeriodButtons,
+  useDailyPeriodState,
+  useMonthlyPeriodState,
 } from '@/components/history/HistoryPeriodPresets';
 
 export function HistoryView() {
+  const [tab, setTab] = useState<HistoryReportTab>('daily');
   const [dashboard, setDashboard] = useState<HistoryDashboard | null>(null);
   const [byCourier, setByCourier] = useState<HistoryDashboardByCourier[]>([]);
   const [couriers, setCouriers] = useState<Courier[]>([]);
@@ -93,74 +101,145 @@ export function HistoryView() {
   const [debtPayments, setDebtPayments] = useState<DebtPayment[]>([]);
   const [summary, setSummary] = useState<HistorySummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const { preset, setPreset, dateFrom, setDateFrom, dateTo, setDateTo } =
-    useHistoryPeriodState('today');
+  const [expenseQ, setExpenseQ] = useState('');
+  const daily = useDailyPeriodState('today');
+  const monthly = useMonthlyPeriodState('month');
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+
+  const buildQuery = useCallback((): HistoryQueryOptions => {
+    const courierId = courierFilter === '' ? undefined : courierFilter;
+    if (tab === 'daily') {
+      const p = resolveDailyHistoryParams(daily.preset, daily.date);
+      return { ...p, courierId, expenseQ: expenseQ || undefined };
+    }
+    const p = resolveMonthlyHistoryParams(
+      monthly.preset,
+      monthly.dateFrom,
+      monthly.dateTo
+    );
+    return { ...p, courierId, expenseQ: expenseQ || undefined };
+  }, [
+    tab,
+    daily.preset,
+    daily.date,
+    monthly.preset,
+    monthly.dateFrom,
+    monthly.dateTo,
+    courierFilter,
+    expenseQ,
+  ]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { period, startDate, endDate } = resolveHistoryPeriodParams(
-        preset,
-        dateFrom,
-        dateTo
-      );
-      const courierId = courierFilter === '' ? undefined : courierFilter;
+      const opts = buildQuery();
 
-      const [dashRes, histRes] = await Promise.allSettled([
-        getHistoryDashboard(period, startDate, endDate, courierId),
-        getHistory(period, startDate, endDate, courierId),
-      ]);
+      if (tab === 'daily') {
+        const [dashRes, histRes] = await Promise.allSettled([
+          getHistoryDashboard(opts),
+          getHistory(opts),
+        ]);
 
-      if (histRes.status === 'fulfilled') {
-        const histData = histRes.value;
-        setOrders(histData.orders ?? []);
-        setSummary(histData.summary ?? null);
-        setExpenses(histData.expenses ?? []);
-        setDebtPayments(histData.debtPayments ?? []);
-        if (histData.dashboard) {
-          setDashboard(normalizeHistoryDashboard(histData.dashboard));
+        if (histRes.status === 'fulfilled') {
+          const histData = histRes.value;
+          setOrders(histData.orders ?? []);
+          setSummary(histData.summary ?? null);
+          setExpenses(histData.expenses ?? []);
+          setDebtPayments(histData.debtPayments ?? []);
+          if (histData.dashboard) {
+            setDashboard(normalizeHistoryDashboard(histData.dashboard));
+          }
+          if (histData.by_courier) {
+            setByCourier(
+              histData.by_courier.map((row) => ({
+                ...row,
+                dashboard: normalizeHistoryDashboard(row.dashboard),
+              }))
+            );
+          }
+        } else {
+          setOrders([]);
+          setSummary(null);
+          setExpenses([]);
+          setDebtPayments([]);
         }
-        if (histData.by_courier) {
-          setByCourier(
-            histData.by_courier.map((row) => ({
-              ...row,
-              dashboard: normalizeHistoryDashboard(row.dashboard),
-            }))
-          );
+
+        if (dashRes.status === 'fulfilled') {
+          setDashboard(dashRes.value.dashboard);
+          setByCourier(dashRes.value.by_courier ?? []);
+          setCouriers(dashRes.value.couriers ?? []);
+          if (dashRes.value.dashboard.expenses?.items) {
+            setExpenses(dashRes.value.dashboard.expenses.items);
+          }
+        } else {
+          setDashboard((prev) => prev ?? normalizeHistoryDashboard(null));
+          try {
+            const list = await getCouriers();
+            setCouriers(list);
+          } catch {
+            setCouriers([]);
+          }
+        }
+
+        if (histRes.status === 'rejected' && dashRes.status === 'rejected') {
+          const err = histRes.reason;
+          setToast({
+            message: isBackendMigrationError(err)
+              ? getMigrationErrorHint()
+              : err instanceof Error
+                ? err.message
+                : 'Tarixçə yüklənə bilmədi',
+            type: 'error',
+          });
         }
       } else {
+        const [dashRes, histRes] = await Promise.allSettled([
+          getMonthlyHistoryDashboard(opts),
+          getMonthlyHistory(opts),
+        ]);
+
         setOrders([]);
-        setSummary(null);
-        setExpenses([]);
         setDebtPayments([]);
-      }
+        setByCourier([]);
+        setSummary(null);
 
-      if (dashRes.status === 'fulfilled') {
-        setDashboard(dashRes.value.dashboard);
-        setByCourier(dashRes.value.by_courier ?? []);
-        setCouriers(dashRes.value.couriers ?? []);
-      } else {
-        setDashboard((prev) => prev ?? normalizeHistoryDashboard(null));
-        try {
-          const list = await getCouriers();
-          setCouriers(list);
-        } catch {
-          setCouriers([]);
+        if (histRes.status === 'fulfilled') {
+          setExpenses(histRes.value.expenses ?? []);
+          if (histRes.value.dashboard) {
+            setDashboard(normalizeHistoryDashboard(histRes.value.dashboard));
+          }
+        } else {
+          setExpenses([]);
         }
-      }
 
-      if (histRes.status === 'rejected' && dashRes.status === 'rejected') {
-        const err = histRes.reason;
-        setToast({
-          message: isBackendMigrationError(err)
-            ? getMigrationErrorHint()
-            : err instanceof Error
-              ? err.message
-              : 'Tarixçə yüklənə bilmədi',
-          type: 'error',
-        });
+        if (dashRes.status === 'fulfilled') {
+          setDashboard(dashRes.value.dashboard);
+          setCouriers(dashRes.value.couriers ?? []);
+          if (dashRes.value.dashboard.expenses?.items) {
+            setExpenses(dashRes.value.dashboard.expenses.items);
+          }
+        } else {
+          setDashboard((prev) => prev ?? normalizeHistoryDashboard(null));
+          try {
+            const list = await getCouriers();
+            setCouriers(list);
+          } catch {
+            setCouriers([]);
+          }
+        }
+
+        if (histRes.status === 'rejected' && dashRes.status === 'rejected') {
+          const err = histRes.reason;
+          setToast({
+            message: isBackendMigrationError(err)
+              ? getMigrationErrorHint()
+              : err instanceof Error
+                ? err.message
+                : 'Aylıq hesabat yüklənə bilmədi',
+            type: 'error',
+          });
+        }
       }
     } catch (err) {
       setToast({
@@ -175,26 +254,29 @@ export function HistoryView() {
     } finally {
       setLoading(false);
     }
-  }, [preset, dateFrom, dateTo, courierFilter]);
+  }, [buildQuery, tab]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    setExpenseQ('');
+  }, [tab]);
+
   const handleExport = async () => {
+    if (tab !== 'daily') {
+      setToast({ message: 'Excel export hazırda yalnız günlük hesabat üçündür', type: 'info' });
+      return;
+    }
     try {
-      const { period, startDate, endDate } = resolveHistoryPeriodParams(
-        preset,
-        dateFrom,
-        dateTo
-      );
-      const courierId = courierFilter === '' ? undefined : courierFilter;
+      const opts = buildQuery();
       const { startDate: fileFrom, endDate: fileTo } = resolveExportFilenameDates(
-        preset,
-        dateFrom,
-        dateTo
+        daily.preset,
+        daily.date,
+        daily.date
       );
-      const data = await getHistory(period, startDate, endDate, courierId);
+      const data = await getHistory(opts);
       const rangeLabel =
         fileFrom === fileTo ? fileFrom : `${fileFrom} — ${fileTo}`;
       const blob = await buildHistoryExcelBlob(data, rangeLabel);
@@ -210,10 +292,44 @@ export function HistoryView() {
     [orders, summary]
   );
 
+  const rangeLabel =
+    tab === 'daily'
+      ? daily.date
+      : `${monthly.dateFrom} — ${monthly.dateTo}`;
+
   return (
     <div className="space-y-6">
+      <div className="flex gap-2 rounded-xl bg-slate-200/70 p-1">
+        {(
+          [
+            { key: 'daily', label: 'Günlük hesabat' },
+            { key: 'monthly', label: 'Aylıq hesabat' },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+              tab === t.key
+                ? 'bg-white text-sky-700 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <HistoryPeriodButtons preset={preset} onPresetChange={setPreset} />
+        {tab === 'daily' ? (
+          <DailyPeriodButtons preset={daily.preset} onPresetChange={daily.setPreset} />
+        ) : (
+          <MonthlyPeriodButtons
+            preset={monthly.preset}
+            onPresetChange={monthly.setPreset}
+          />
+        )}
         <select
           value={courierFilter === '' ? '' : String(courierFilter)}
           onChange={(e) => {
@@ -238,20 +354,41 @@ export function HistoryView() {
             <Plus size={16} />
             Xərc əlavə et
           </Button>
-          <Button variant="secondary" onClick={handleExport} className="w-full sm:w-auto">
-            <Download size={16} />
-            Excel export
-          </Button>
+          {tab === 'daily' && (
+            <Button variant="secondary" onClick={handleExport} className="w-full sm:w-auto">
+              <Download size={16} />
+              Excel export
+            </Button>
+          )}
         </div>
       </div>
 
-      {preset === 'custom' && (
+      {tab === 'daily' && daily.preset === 'custom' && (
+        <Card className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Gün</label>
+              <input
+                type="date"
+                value={daily.date}
+                onChange={(e) => daily.setDate(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+            </div>
+            <Button type="button" onClick={load} className="w-full sm:w-auto">
+              Tətbiq et
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {tab === 'monthly' && monthly.preset === 'custom' && (
         <Card className="p-4">
           <DateFields
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            setDateFrom={setDateFrom}
-            setDateTo={setDateTo}
+            dateFrom={monthly.dateFrom}
+            dateTo={monthly.dateTo}
+            setDateFrom={monthly.setDateFrom}
+            setDateTo={monthly.setDateTo}
             onApply={load}
           />
         </Card>
@@ -262,10 +399,13 @@ export function HistoryView() {
         expenses={expenses}
         loading={loading}
         byCourier={byCourier}
-        showByCourier={courierFilter === ''}
+        showByCourier={tab === 'daily' && courierFilter === ''}
+        mode={tab}
+        expenseQ={expenseQ}
+        onExpenseQChange={setExpenseQ}
       />
 
-      {unpaidCredit.amount > 0 && (
+      {tab === 'daily' && unpaidCredit.amount > 0 && (
         <p className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-800 ring-1 ring-rose-100">
           Nisyə (ödənilməmiş): {formatCurrency(unpaidCredit.amount)}
           {unpaidCredit.count > 0 ? ` (${unpaidCredit.count} sifariş)` : ''}
@@ -286,19 +426,21 @@ export function HistoryView() {
         onError={(message) => setToast({ message, type: 'error' })}
       />
 
-      <DebtPaymentsTable loading={loading} payments={debtPayments} />
+      {tab === 'daily' && (
+        <>
+          <DebtPaymentsTable loading={loading} payments={debtPayments} />
 
-      <Card className="overflow-hidden">
-        <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
-          <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
-            Yerinə yetirilmiş sifarişlər ({orders.length})
-          </h3>
-          <p className="text-xs text-slate-500 sm:text-sm">
-            {dateFrom} — {dateTo}
-          </p>
-        </div>
-        <HistoryTable loading={loading} orders={orders} onMarkPaid={load} />
-      </Card>
+          <Card className="overflow-hidden">
+            <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
+              <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
+                Yerinə yetirilmiş sifarişlər ({orders.length})
+              </h3>
+              <p className="text-xs text-slate-500 sm:text-sm">{rangeLabel}</p>
+            </div>
+            <HistoryTable loading={loading} orders={orders} onMarkPaid={load} />
+          </Card>
+        </>
+      )}
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />

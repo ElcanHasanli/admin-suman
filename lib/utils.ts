@@ -469,6 +469,35 @@ export function getDateRange(preset: 'yesterday' | 'today'): { from: string; to:
 
 export type ApiPeriod = 'today' | 'yesterday' | 'custom';
 
+/** Günlük tarixçə — today | yesterday | date (tək gün) */
+export function resolveDailyHistoryParams(
+  preset: 'today' | 'yesterday' | 'custom',
+  date: string
+): { period?: string; date?: string; startDate?: string; endDate?: string } {
+  if (preset === 'today' || preset === 'yesterday') {
+    return { period: preset };
+  }
+  if (date) {
+    return { date, period: 'custom', startDate: date, endDate: date };
+  }
+  return { period: 'today' };
+}
+
+/** Aylıq tarixçə — days2 | week | month | custom aralıq */
+export function resolveMonthlyHistoryParams(
+  preset: 'days2' | 'week' | 'month' | 'custom',
+  dateFrom: string,
+  dateTo: string
+): { period: string; startDate?: string; endDate?: string } {
+  if (preset === 'custom' && dateFrom && dateTo) {
+    return { period: 'custom', startDate: dateFrom, endDate: dateTo };
+  }
+  if (preset === 'days2' || preset === 'week' || preset === 'month') {
+    return { period: preset };
+  }
+  return { period: 'month' };
+}
+
 /** Tarixçə period — today | yesterday | week | month | custom */
 export function resolveHistoryPeriodParams(
   preset: HistoryPeriod,

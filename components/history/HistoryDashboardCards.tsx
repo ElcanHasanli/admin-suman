@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Droplets,
   Banknote,
@@ -19,6 +19,7 @@ import type {
   HistoryDashboardBidonBox,
   HistoryDashboardByCourier,
   HistoryDashboardDepositsBox,
+  HistoryReportTab,
 } from '@/lib/types';
 import {
   formatCurrency,
@@ -27,6 +28,7 @@ import {
   getExpenseAuthorLabel,
   getOrderCustomerName,
   getOrderExtraLabel,
+  getPaymentTypeLabel,
   parseExpenseAmount,
   parseMoney,
 } from '@/lib/utils';
@@ -44,6 +46,7 @@ type ModalKind =
   | 'bidons_sold'
   | 'bidons_taken'
   | 'deposits'
+  | 'net_income'
   | null;
 
 export function HistoryDashboardCards({
@@ -52,15 +55,21 @@ export function HistoryDashboardCards({
   loading,
   byCourier,
   showByCourier,
+  mode = 'daily',
+  expenseQ = '',
+  onExpenseQChange,
 }: {
   dashboard: HistoryDashboard | null;
   expenses: Expense[];
   loading: boolean;
   byCourier?: HistoryDashboardByCourier[];
-  /** Filter yoxdursa kuryer üzrə 7 qutu göstər */
   showByCourier?: boolean;
+  mode?: HistoryReportTab;
+  expenseQ?: string;
+  onExpenseQChange?: (q: string) => void;
 }) {
   const [modal, setModal] = useState<ModalKind>(null);
+  const isMonthly = mode === 'monthly';
 
   const d = dashboard;
   const sales = d?.sales;
@@ -78,9 +87,12 @@ export function HistoryDashboardCards({
       )}`
     : undefined;
 
+  const expenseList =
+    d?.expenses?.items && d.expenses.items.length > 0 ? d.expenses.items : expenses;
+
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
         <StatCard
           title="Satış"
           value={loading ? '...' : formatCurrency(d?.sales?.total ?? 0)}
@@ -89,56 +101,62 @@ export function HistoryDashboardCards({
           accent="sky"
           onClick={sales ? () => setModal('sales') : undefined}
         />
+        {!isMonthly && (
+          <StatCard
+            title="Borc verildi"
+            value={loading ? '...' : formatCurrency(d?.debt_given?.total ?? 0)}
+            subtitle={
+              loading
+                ? undefined
+                : d?.debt_given?.count
+                  ? `${d.debt_given.count} ödəniş`
+                  : undefined
+            }
+            icon={<Banknote size={20} />}
+            accent="amber"
+            onClick={d?.debt_given ? () => setModal('debt_given') : undefined}
+          />
+        )}
         <StatCard
-          title="Borc verildi"
-          value={loading ? '...' : formatCurrency(d?.debt_given?.total ?? 0)}
-          subtitle={
-            loading
-              ? undefined
-              : d?.debt_given?.count
-                ? `${d.debt_given.count} ödəniş`
-                : undefined
-          }
-          icon={<Banknote size={20} />}
-          accent="amber"
-          onClick={d?.debt_given ? () => setModal('debt_given') : undefined}
-        />
-        <StatCard
-          title="Nişə"
+          title="Nisyə"
           value={loading ? '...' : formatCurrency(d?.credit?.total ?? 0)}
           subtitle={
             loading
               ? undefined
               : d?.credit?.count
                 ? `${d.credit.count} ödənilməmiş`
-                : 'Ödənilməmiş nişə'
+                : 'Ödənilməmiş nisyə'
           }
           icon={<CreditCard size={20} />}
           accent="violet"
           onClick={d?.credit ? () => setModal('credit') : undefined}
         />
-        <StatCard
-          title="Ödənilib"
-          value={loading ? '...' : formatCurrency(d?.prepaid?.total ?? 0)}
-          subtitle={
-            loading
-              ? undefined
-              : d?.prepaid?.count
-                ? `${d.prepaid.count} sifariş`
-                : 'Əvvəlcədən ödəniş'
-          }
-          icon={<Wallet size={20} />}
-          accent="emerald"
-          onClick={d?.prepaid ? () => setModal('prepaid') : undefined}
-        />
-        <StatCard
-          title="Kuryerdə qalıq"
-          value={loading ? '...' : formatCurrency(d?.courier_balance?.total ?? 0)}
-          subtitle={loading ? undefined : courierSubtitle}
-          icon={<Truck size={20} />}
-          accent="sky"
-          onClick={d?.courier_balance ? () => setModal('courier_balance') : undefined}
-        />
+        {!isMonthly && (
+          <>
+            <StatCard
+              title="Ödənilib"
+              value={loading ? '...' : formatCurrency(d?.prepaid?.total ?? 0)}
+              subtitle={
+                loading
+                  ? undefined
+                  : d?.prepaid?.count
+                    ? `${d.prepaid.count} sifariş`
+                    : 'Əvvəlcədən ödəniş'
+              }
+              icon={<Wallet size={20} />}
+              accent="emerald"
+              onClick={d?.prepaid ? () => setModal('prepaid') : undefined}
+            />
+            <StatCard
+              title="Kuryerdə qalıq"
+              value={loading ? '...' : formatCurrency(d?.courier_balance?.total ?? 0)}
+              subtitle={loading ? undefined : courierSubtitle}
+              icon={<Truck size={20} />}
+              accent="sky"
+              onClick={d?.courier_balance ? () => setModal('courier_balance') : undefined}
+            />
+          </>
+        )}
         <StatCard
           title="Xərclər"
           value={loading ? '...' : formatCurrency(d?.expenses?.total ?? 0)}
@@ -146,13 +164,15 @@ export function HistoryDashboardCards({
           accent="rose"
           onClick={() => setModal('expenses')}
         />
-        <StatCard
-          title="Qalıq"
-          value={loading ? '...' : formatCurrency(d?.net_balance?.total ?? 0)}
-          subtitle="Kuryerdə qalıq − xərclər"
-          icon={<Scale size={20} />}
-          accent="emerald"
-        />
+        {!isMonthly && (
+          <StatCard
+            title="Qalıq"
+            value={loading ? '...' : formatCurrency(d?.net_balance?.total ?? 0)}
+            subtitle="Kuryerdə qalıq − xərclər"
+            icon={<Scale size={20} />}
+            accent="emerald"
+          />
+        )}
         <StatCard
           title="Satılan bidon"
           value={loading ? '...' : String(d?.bidons_sold?.total ?? 0)}
@@ -181,27 +201,39 @@ export function HistoryDashboardCards({
           accent="violet"
           onClick={d?.bidons_taken ? () => setModal('bidons_taken') : undefined}
         />
-        <StatCard
-          title="Depozit"
-          value={
-            loading
-              ? '...'
-              : formatCurrency(d?.deposits?.entered ?? d?.deposits?.total ?? 0)
-          }
-          subtitle={
-            loading
-              ? undefined
-              : d?.deposits?.count
-                ? `${d.deposits.count} əməliyyat`
-                : 'Bu periodda daxil'
-          }
-          icon={<PiggyBank size={20} />}
-          accent="amber"
-          onClick={d?.deposits ? () => setModal('deposits') : undefined}
-        />
+        {!isMonthly && (
+          <StatCard
+            title="Depozit"
+            value={
+              loading
+                ? '...'
+                : formatCurrency(d?.deposits?.entered ?? d?.deposits?.total ?? 0)
+            }
+            subtitle={
+              loading
+                ? undefined
+                : d?.deposits?.count
+                  ? `${d.deposits.count} əməliyyat`
+                  : 'Bu periodda daxil'
+            }
+            icon={<PiggyBank size={20} />}
+            accent="amber"
+            onClick={d?.deposits ? () => setModal('deposits') : undefined}
+          />
+        )}
+        {isMonthly && (
+          <StatCard
+            title="Xalis gəlir"
+            value={loading ? '...' : formatCurrency(d?.net_income?.total ?? 0)}
+            subtitle={loading ? undefined : 'satış − xərclər'}
+            icon={<Scale size={20} />}
+            accent="emerald"
+            onClick={d?.net_income ? () => setModal('net_income') : undefined}
+          />
+        )}
       </div>
 
-      {showByCourier && byCourier && byCourier.length > 0 && (
+      {!isMonthly && showByCourier && byCourier && byCourier.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-slate-700">Kuryer üzrə</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -226,7 +258,9 @@ export function HistoryDashboardCards({
       <ExpensesModal
         open={modal === 'expenses'}
         onClose={() => setModal(null)}
-        expenses={expenses}
+        expenses={expenseList}
+        expenseQ={expenseQ}
+        onExpenseQChange={onExpenseQChange}
       />
       <BidonsModal
         open={modal === 'bidons_sold'}
@@ -247,6 +281,11 @@ export function HistoryDashboardCards({
         onClose={() => setModal(null)}
         box={d?.deposits ?? null}
       />
+      <NetIncomeModal
+        open={modal === 'net_income'}
+        onClose={() => setModal(null)}
+        dashboard={d}
+      />
     </>
   );
 }
@@ -262,7 +301,7 @@ function CourierDashboardCard({ row }: { row: HistoryDashboardByCourier }) {
       <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
         <Metric label="Satış" value={d.sales?.total ?? 0} />
         <Metric label="Borc verildi" value={d.debt_given?.total ?? 0} />
-        <Metric label="Nişə" value={d.credit?.total ?? 0} />
+        <Metric label="Nisyə" value={d.credit?.total ?? 0} />
         <Metric label="Ödənilib" value={d.prepaid?.total ?? 0} />
         <Metric label="Kuryerdə" value={d.courier_balance?.total ?? 0} />
         <Metric label="Xərclər" value={d.expenses?.total ?? 0} />
@@ -462,19 +501,37 @@ function CreditModal({
   onClose: () => void;
   dashboard: HistoryDashboard | null;
 }) {
+  const customers = dashboard?.credit?.customers ?? [];
   const orders = dashboard?.credit?.orders ?? [];
+  const hasCustomers = customers.length > 0;
   return (
-    <Modal open={open} onClose={onClose} title="Nişə (ödənilməmiş)" size="md">
+    <Modal open={open} onClose={onClose} title="nisyə (ödənilməmiş)" size="md">
       <p className="mb-3 text-xs text-slate-500">
-        Ödənilməmiş qalıqlar: tam nişə və qismən nağd/kart. Borc ödəniləndə bu qutudan çıxır.
+        Ödənilməmiş qalıqlar: tam nisyə və qismən nağd/kart. Borc ödəniləndə bu qutudan çıxır.
       </p>
-      {orders.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          {dashboard?.credit?.total
-            ? `Cəmi: ${formatCurrency(dashboard.credit.total)}`
-            : 'Ödənilməmiş nişə yoxdur.'}
-        </p>
-      ) : (
+      {hasCustomers ? (
+        <ul className="max-h-72 space-y-2 overflow-y-auto text-sm">
+          {customers.map((row, i) => (
+            <li
+              key={`${row.order_id}-${i}`}
+              className="flex justify-between gap-3 rounded-lg bg-rose-50 px-3 py-2 ring-1 ring-rose-100"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium text-slate-900">{row.customer}</p>
+                <p className="text-xs text-slate-500">
+                  #{row.order_id}
+                  {row.kind === 'partial' ? ' · qismən' : ' · nisyə'}
+                  {row.payment_type ? ` · ${getPaymentTypeLabel(row.payment_type)}` : ''}
+                  {row.courier_name ? ` · ${row.courier_name}` : ''}
+                </p>
+              </div>
+              <span className="shrink-0 font-semibold text-rose-700">
+                {formatCurrency(row.amount)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : orders.length > 0 ? (
         <ul className="max-h-72 space-y-2 overflow-y-auto text-sm">
           {orders.map((o) => (
             <li
@@ -492,6 +549,12 @@ function CreditModal({
             </li>
           ))}
         </ul>
+      ) : (
+        <p className="text-sm text-slate-500">
+          {dashboard?.credit?.total
+            ? `Cəmi: ${formatCurrency(dashboard.credit.total)}`
+            : 'Ödənilməmiş nisyə yoxdur.'}
+        </p>
       )}
     </Modal>
   );
@@ -555,13 +618,13 @@ function CourierBalanceModal({
             {formatCurrency(dashboard.courier_balance.total)}
           </p>
           <p className="text-xs text-slate-500">
-            (Satış + Borc verildi) − (Nişə + Ödənilib + qismən nağd/kart qalığı)
+            (Satış + Borc verildi) − (nisyə + Ödənilib + qismən nağd/kart qalığı)
           </p>
           {f && (
             <dl className="grid grid-cols-2 gap-2 text-xs">
               <Metric label="Satış" value={f.sales ?? 0} />
               <Metric label="Borc verildi" value={f.debt_given ?? 0} />
-              <Metric label="Nişə" value={f.credit ?? 0} />
+              <Metric label="nisyə" value={f.credit ?? 0} />
               <Metric label="Ödənilib" value={f.prepaid ?? 0} />
               <Metric label="Qismən qalıq" value={f.partial_unpaid ?? 0} />
             </dl>
@@ -576,15 +639,44 @@ function ExpensesModal({
   open,
   onClose,
   expenses,
+  expenseQ = '',
+  onExpenseQChange,
 }: {
   open: boolean;
   onClose: () => void;
   expenses: Expense[];
+  expenseQ?: string;
+  onExpenseQChange?: (q: string) => void;
 }) {
+  const [localQ, setLocalQ] = useState(expenseQ);
+
+  useEffect(() => {
+    if (open) setLocalQ(expenseQ);
+  }, [open, expenseQ]);
+
+  useEffect(() => {
+    if (!onExpenseQChange) return;
+    const t = setTimeout(() => {
+      if (localQ !== expenseQ) onExpenseQChange(localQ);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [localQ, expenseQ, onExpenseQChange]);
+
   return (
     <Modal open={open} onClose={onClose} title="Xərclər" size="lg">
+      <div className="mb-3">
+        <input
+          type="search"
+          value={localQ}
+          onChange={(e) => setLocalQ(e.target.value)}
+          placeholder="Təsvirə görə axtar (məs. yanacaq)"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+        />
+      </div>
       {expenses.length === 0 ? (
-        <p className="text-sm text-slate-500">Bu periodda xərc yoxdur.</p>
+        <p className="text-sm text-slate-500">
+          {localQ.trim() ? 'Axtarışa uyğun xərc yoxdur.' : 'Bu periodda xərc yoxdur.'}
+        </p>
       ) : (
         <TableScroll minWidth={400}>
           <table className="w-full text-sm">
@@ -608,6 +700,36 @@ function ExpensesModal({
             </tbody>
           </table>
         </TableScroll>
+      )}
+    </Modal>
+  );
+}
+
+function NetIncomeModal({
+  open,
+  onClose,
+  dashboard,
+}: {
+  open: boolean;
+  onClose: () => void;
+  dashboard: HistoryDashboard | null;
+}) {
+  const n = dashboard?.net_income;
+  return (
+    <Modal open={open} onClose={onClose} title="Xalis gəlir" size="md">
+      {!n ? (
+        <p className="text-sm text-slate-500">Məlumat yoxdur.</p>
+      ) : (
+        <div className="space-y-3 text-sm">
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 font-semibold text-emerald-900 ring-1 ring-emerald-100">
+            {formatCurrency(n.total)}
+          </p>
+          <p className="text-xs text-slate-500">{n.formula || 'xalis_gəlir = satış − xərclər'}</p>
+          <dl className="grid grid-cols-2 gap-2 text-xs">
+            <Metric label="Satış" value={n.sales ?? 0} />
+            <Metric label="Xərclər" value={n.expenses ?? 0} />
+          </dl>
+        </div>
       )}
     </Modal>
   );

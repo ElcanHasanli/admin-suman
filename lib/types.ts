@@ -23,7 +23,15 @@ export interface OrderExtraPayload {
   description?: string;
 }
 
-export type HistoryPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
+export type HistoryPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'days2';
+
+/** Günlük hesabat periodları */
+export type DailyHistoryPeriod = 'today' | 'yesterday' | 'custom';
+
+/** Aylıq hesabat period / shortcut */
+export type MonthlyHistoryPeriod = 'custom' | 'week' | 'days2' | 'month';
+
+export type HistoryReportTab = 'daily' | 'monthly';
 
 export type ApiPeriod = 'today' | 'yesterday' | 'custom';
 
@@ -315,8 +323,26 @@ export interface HistoryDashboardDebtGiven {
 export interface HistoryDashboardAmountBox {
   total: number;
   count?: number;
+  label?: string;
   /** Nisyə: ödənilməmiş sifarişlər; digər qutularda opsional siyahı */
   orders?: Order[];
+  /** Nişə modalı — müştəri/sifariş sətirləri */
+  customers?: HistoryDashboardCreditCustomer[];
+  /** Xərc modalı — filterlənmiş siyahı */
+  items?: Expense[];
+}
+
+export interface HistoryDashboardCreditCustomer {
+  order_id: number;
+  customer_id?: number;
+  customer: string;
+  amount: number | string;
+  price?: number | string;
+  amount_paid?: number | string;
+  payment_type?: string;
+  kind?: 'credit' | 'partial' | string;
+  courier_name?: string;
+  completed_at?: string;
 }
 
 export interface HistoryDashboardCourierBalance {
@@ -328,6 +354,15 @@ export interface HistoryDashboardCourierBalance {
     prepaid?: number;
     partial_unpaid?: number;
   };
+}
+
+/** Aylıq: satış − xərclər */
+export interface HistoryDashboardNetIncome {
+  total: number;
+  sales?: number;
+  expenses?: number;
+  formula?: string;
+  label?: string;
 }
 
 /** Bidon qutusu (ədəd — AZN deyil) */
@@ -384,6 +419,8 @@ export interface HistoryDashboard {
   bidons_taken: HistoryDashboardBidonBox;
   /** Depozit daxil/çıxış (ledger) */
   deposits: HistoryDashboardDepositsBox;
+  /** Aylıq hesabat — xalis gəlir */
+  net_income?: HistoryDashboardNetIncome | null;
 }
 
 /** Filter olmadan — hər kuryer üçün eyni qutular */
@@ -393,8 +430,21 @@ export interface HistoryDashboardByCourier {
   dashboard: HistoryDashboard;
 }
 
+export interface HistoryQueryOptions {
+  period?: string;
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  courierId?: number;
+  expenseQ?: string;
+}
+
 export interface HistoryDashboardResponse {
   period: string;
+  report?: string;
+  startDate?: string;
+  endDate?: string;
+  expense_q?: string | null;
   dashboard: HistoryDashboard;
   couriers: Courier[];
   by_courier?: HistoryDashboardByCourier[];

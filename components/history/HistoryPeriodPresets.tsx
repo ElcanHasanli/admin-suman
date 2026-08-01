@@ -1,27 +1,34 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { HistoryPeriod } from '@/lib/types';
-import { getDateRange } from '@/lib/utils';
+import type { DailyHistoryPeriod, MonthlyHistoryPeriod } from '@/lib/types';
+import { formatLocalDate, getDateRange } from '@/lib/utils';
 
-export const HISTORY_PERIOD_PRESETS: { key: HistoryPeriod; label: string }[] = [
+export const DAILY_PERIOD_PRESETS: { key: DailyHistoryPeriod; label: string }[] = [
   { key: 'today', label: 'Bu gün' },
   { key: 'yesterday', label: 'Dünən' },
-  { key: 'week', label: 'Həftə' },
-  { key: 'month', label: 'Ay' },
-  { key: 'custom', label: 'Tarix aralığı' },
+  { key: 'custom', label: 'Tarix' },
 ];
 
-export function HistoryPeriodButtons({
+export const MONTHLY_PERIOD_PRESETS: { key: MonthlyHistoryPeriod; label: string }[] = [
+  { key: 'days2', label: '2 gün' },
+  { key: 'week', label: 'Həftə' },
+  { key: 'month', label: 'Bu ay' },
+  { key: 'custom', label: 'Aralıq' },
+];
+
+function PeriodButtons<T extends string>({
+  presets,
   preset,
   onPresetChange,
 }: {
-  preset: HistoryPeriod;
-  onPresetChange: (p: HistoryPeriod) => void;
+  presets: { key: T; label: string }[];
+  preset: T;
+  onPresetChange: (p: T) => void;
 }) {
   return (
     <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-      {HISTORY_PERIOD_PRESETS.map((p) => (
+      {presets.map((p) => (
         <button
           key={p.key}
           type="button"
@@ -39,19 +46,100 @@ export function HistoryPeriodButtons({
   );
 }
 
-export function useHistoryPeriodState(initial: HistoryPeriod = 'today') {
-  const [preset, setPreset] = useState<HistoryPeriod>(initial);
+export function DailyPeriodButtons({
+  preset,
+  onPresetChange,
+}: {
+  preset: DailyHistoryPeriod;
+  onPresetChange: (p: DailyHistoryPeriod) => void;
+}) {
+  return (
+    <PeriodButtons
+      presets={DAILY_PERIOD_PRESETS}
+      preset={preset}
+      onPresetChange={onPresetChange}
+    />
+  );
+}
+
+export function MonthlyPeriodButtons({
+  preset,
+  onPresetChange,
+}: {
+  preset: MonthlyHistoryPeriod;
+  onPresetChange: (p: MonthlyHistoryPeriod) => void;
+}) {
+  return (
+    <PeriodButtons
+      presets={MONTHLY_PERIOD_PRESETS}
+      preset={preset}
+      onPresetChange={onPresetChange}
+    />
+  );
+}
+
+/** @deprecated — use DailyPeriodButtons */
+export function HistoryPeriodButtons({
+  preset,
+  onPresetChange,
+}: {
+  preset: DailyHistoryPeriod;
+  onPresetChange: (p: DailyHistoryPeriod) => void;
+}) {
+  return <DailyPeriodButtons preset={preset} onPresetChange={onPresetChange} />;
+}
+
+export function useDailyPeriodState(initial: DailyHistoryPeriod = 'today') {
+  const [preset, setPreset] = useState<DailyHistoryPeriod>(initial);
   const today = getDateRange('today');
-  const [dateFrom, setDateFrom] = useState(today.from);
-  const [dateTo, setDateTo] = useState(today.to);
+  const [date, setDate] = useState(today.from);
 
   useEffect(() => {
     if (preset === 'today' || preset === 'yesterday') {
-      const range = getDateRange(preset);
-      setDateFrom(range.from);
-      setDateTo(range.to);
+      setDate(getDateRange(preset).from);
+    }
+  }, [preset]);
+
+  return { preset, setPreset, date, setDate };
+}
+
+export function useMonthlyPeriodState(initial: MonthlyHistoryPeriod = 'month') {
+  const [preset, setPreset] = useState<MonthlyHistoryPeriod>(initial);
+  const today = formatLocalDate();
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const [dateFrom, setDateFrom] = useState(monthStart);
+  const [dateTo, setDateTo] = useState(today);
+
+  useEffect(() => {
+    const now = new Date();
+    if (preset === 'days2') {
+      const from = new Date(now);
+      from.setDate(now.getDate() - 1);
+      setDateFrom(formatLocalDate(from));
+      setDateTo(formatLocalDate(now));
+    } else if (preset === 'week') {
+      const from = new Date(now);
+      from.setDate(now.getDate() - 6);
+      setDateFrom(formatLocalDate(from));
+      setDateTo(formatLocalDate(now));
+    } else if (preset === 'month') {
+      setDateFrom(`${formatLocalDate(now).slice(0, 7)}-01`);
+      setDateTo(formatLocalDate(now));
     }
   }, [preset]);
 
   return { preset, setPreset, dateFrom, setDateFrom, dateTo, setDateTo };
+}
+
+/** @deprecated — use useDailyPeriodState */
+export function useHistoryPeriodState(initial: DailyHistoryPeriod = 'today') {
+  const daily = useDailyPeriodState(initial);
+  return {
+    preset: daily.preset,
+    setPreset: daily.setPreset,
+    dateFrom: daily.date,
+    setDateFrom: daily.setDate,
+    dateTo: daily.date,
+    setDateTo: daily.setDate,
+  };
 }
