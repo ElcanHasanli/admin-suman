@@ -19,12 +19,18 @@ export function formatCurrency(amount: number | string | undefined | null): stri
   return `₼${num.toFixed(2)}`;
 }
 
-export function getCustomerName(customer: Customer): string {
+type CustomerNameFields = {
+  display_name?: string | null;
+  name?: string | null;
+  surname?: string | null;
+};
+
+export function getCustomerName(customer: CustomerNameFields): string {
   if (customer.display_name?.trim()) return customer.display_name.trim();
   return `${customer.name || ''} ${customer.surname || ''}`.trim() || 'Naməlum';
 }
 
-export function getCustomerPhone(customer: Customer): string {
+export function getCustomerPhone(customer: { phone?: string | null }): string {
   return customer.phone || '';
 }
 
@@ -150,11 +156,15 @@ export function getCustomerPrice(customer: Customer): number {
   return parseMoney(customer.price);
 }
 
-export function getCustomerActiveBidons(customer: Customer): number {
+export function getCustomerActiveBidons(customer: {
+  active_bidons?: number | null;
+}): number {
   return customer.active_bidons ?? 0;
 }
 
-export function getCustomerDebt(customer: Customer): number {
+export function getCustomerDebt(customer: {
+  debt?: number | string | null;
+}): number {
   const debt = customer.debt ?? 0;
   return typeof debt === 'string' ? parseFloat(debt) : debt;
 }
@@ -496,6 +506,20 @@ export function resolveMonthlyHistoryParams(
     return { period: preset };
   }
   return { period: 'month' };
+}
+
+/** Passiv müştərilər — month/week/days2/custom və ya son N gün */
+export function resolveInactiveCustomersParams(
+  preset: 'days2' | 'week' | 'month' | 'custom' | 'days',
+  dateFrom: string,
+  dateTo: string,
+  days: number
+): { period?: string; startDate?: string; endDate?: string; days?: number } {
+  if (preset === 'days') {
+    const n = Math.max(1, Math.floor(Number(days) || 0));
+    return n > 0 ? { days: n } : { period: 'month' };
+  }
+  return resolveMonthlyHistoryParams(preset, dateFrom, dateTo);
 }
 
 /** Tarixçə period — today | yesterday | week | month | custom */

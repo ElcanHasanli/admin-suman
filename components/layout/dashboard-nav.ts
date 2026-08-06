@@ -6,6 +6,7 @@ import {
   Warehouse,
   Bell,
   CircleDollarSign,
+  UserX,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -16,6 +17,11 @@ export type DashboardNavItem = {
   icon: LucideIcon;
   exact?: boolean;
 };
+
+const CUSTOMER_SUBPATHS = [
+  '/dashboard/customers/debtors',
+  '/dashboard/customers/inactive',
+] as const;
 
 export const dashboardNav: DashboardNavItem[] = [
   {
@@ -50,6 +56,12 @@ export const dashboardNav: DashboardNavItem[] = [
     icon: CircleDollarSign,
   },
   {
+    href: '/dashboard/customers/inactive',
+    label: 'Passiv müştərilər',
+    shortLabel: 'Passiv',
+    icon: UserX,
+  },
+  {
     href: '/dashboard/orders',
     label: 'Sifarişlər',
     shortLabel: 'Sifariş',
@@ -71,14 +83,15 @@ export function isNavActive(
     return pathname === item.href;
   }
   if (item.href === '/dashboard/customers') {
-    return (
-      pathname === '/dashboard/customers' ||
-      (pathname.startsWith('/dashboard/customers/') &&
-        !pathname.startsWith('/dashboard/customers/debtors'))
-    );
+    if (pathname === '/dashboard/customers') return true;
+    if (!pathname.startsWith('/dashboard/customers/')) return false;
+    return !CUSTOMER_SUBPATHS.some((p) => pathname.startsWith(p));
   }
   if (item.href === '/dashboard/customers/debtors') {
     return pathname.startsWith('/dashboard/customers/debtors');
+  }
+  if (item.href === '/dashboard/customers/inactive') {
+    return pathname.startsWith('/dashboard/customers/inactive');
   }
   return pathname.startsWith(item.href);
 }

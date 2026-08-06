@@ -6,7 +6,7 @@ export default function NotificationsPage() {
     <div className="space-y-6 sm:space-y-8">
       <PageHeader
         title="Bildirişlər"
-        description="30+ gün sifariş verməyən müştərilər və digər admin xəbərləri"
+        description="Admin xəbərləri — passiv müştəri siyahısı üçün Passiv müştərilər səhifəsinə baxın"
       />
       <NotificationsView />
     </div>

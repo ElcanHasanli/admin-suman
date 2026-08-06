@@ -991,19 +991,36 @@ export function OrdersView({
             />
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">Kuryer</label>
-              <select
-                value={form.courierId}
-                onChange={(e) => setForm({ ...form, courierId: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                required
-              >
-                <option value="">Seçin...</option>
-                {couriers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {getCourierName(c)}
-                  </option>
-                ))}
-              </select>
+              {couriers.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-sm text-slate-500">
+                  Kuryer yoxdur
+                </p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {couriers.map((c) => {
+                    const selected = form.courierId === String(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setForm({ ...form, courierId: String(c.id) })}
+                        className={`rounded-lg border px-3 py-2.5 text-left transition ${
+                          selected
+                            ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-100'
+                            : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="block text-sm font-bold text-slate-900">
+                          {getCourierName(c)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {!form.courierId && (
+                <p className="mt-1.5 text-xs text-slate-500">Kuryer seçin</p>
+              )}
             </div>
             <OrderNotesSection
               loading={notesLoading}

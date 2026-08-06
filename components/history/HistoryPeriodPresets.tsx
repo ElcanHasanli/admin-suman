@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { DailyHistoryPeriod, MonthlyHistoryPeriod } from '@/lib/types';
+import type {
+  DailyHistoryPeriod,
+  InactiveCustomersPeriod,
+  MonthlyHistoryPeriod,
+} from '@/lib/types';
 import { formatLocalDate, getDateRange } from '@/lib/utils';
 
 export const DAILY_PERIOD_PRESETS: { key: DailyHistoryPeriod; label: string }[] = [
@@ -15,6 +19,14 @@ export const MONTHLY_PERIOD_PRESETS: { key: MonthlyHistoryPeriod; label: string 
   { key: 'week', label: 'Həftə' },
   { key: 'month', label: 'Bu ay' },
   { key: 'custom', label: 'Aralıq' },
+];
+
+export const INACTIVE_PERIOD_PRESETS: { key: InactiveCustomersPeriod; label: string }[] = [
+  { key: 'days2', label: '2 gün' },
+  { key: 'week', label: 'Həftə' },
+  { key: 'month', label: 'Bu ay' },
+  { key: 'custom', label: 'Aralıq' },
+  { key: 'days', label: 'N gün' },
 ];
 
 function PeriodButtons<T extends string>({
@@ -78,6 +90,22 @@ export function MonthlyPeriodButtons({
   );
 }
 
+export function InactivePeriodButtons({
+  preset,
+  onPresetChange,
+}: {
+  preset: InactiveCustomersPeriod;
+  onPresetChange: (p: InactiveCustomersPeriod) => void;
+}) {
+  return (
+    <PeriodButtons
+      presets={INACTIVE_PERIOD_PRESETS}
+      preset={preset}
+      onPresetChange={onPresetChange}
+    />
+  );
+}
+
 /** @deprecated — use DailyPeriodButtons */
 export function HistoryPeriodButtons({
   preset,
@@ -129,6 +157,34 @@ export function useMonthlyPeriodState(initial: MonthlyHistoryPeriod = 'month') {
   }, [preset]);
 
   return { preset, setPreset, dateFrom, setDateFrom, dateTo, setDateTo };
+}
+
+export function useInactivePeriodState(initial: InactiveCustomersPeriod = 'month') {
+  const monthly = useMonthlyPeriodState(
+    initial === 'days' ? 'month' : (initial as MonthlyHistoryPeriod)
+  );
+  const [preset, setPreset] = useState<InactiveCustomersPeriod>(initial);
+  const [days, setDays] = useState(30);
+
+  useEffect(() => {
+    if (preset === 'days') return;
+    if (preset === 'days2' || preset === 'week' || preset === 'month' || preset === 'custom') {
+      monthly.setPreset(preset);
+    }
+    // Sync date range when switching away from days — monthly hook owns dates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset]);
+
+  return {
+    preset,
+    setPreset,
+    dateFrom: monthly.dateFrom,
+    setDateFrom: monthly.setDateFrom,
+    dateTo: monthly.dateTo,
+    setDateTo: monthly.setDateTo,
+    days,
+    setDays,
+  };
 }
 
 /** @deprecated — use useDailyPeriodState */

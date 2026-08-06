@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Bell, RefreshCw, UserX, ChevronRight } from 'lucide-react';
 import { getNotifications } from '@/lib/api';
@@ -19,14 +20,14 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Toast, ToastType } from '@/components/ui/Toast';
 
-type FilterMode = 'inactive' | 'all';
+type FilterMode = 'all' | 'inactive';
 
 export function NotificationsView() {
   const router = useRouter();
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<FilterMode>('inactive');
+  const [filter, setFilter] = useState<FilterMode>('all');
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   const load = useCallback(async (silent = false) => {
@@ -69,20 +70,23 @@ export function NotificationsView() {
 
   return (
     <div className="space-y-4">
-     
+      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-900">Passiv müştəri siyahısı</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Tarix aralığına görə sifariş verməyənlər — sabit 20/30 gün avtomatik siyahı yoxdur
+          </p>
+        </div>
+        <Link
+          href="/dashboard/customers/inactive"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-100 px-3 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200 transition hover:bg-amber-200/70"
+        >
+          <UserX size={16} />
+          Passiv müştərilər
+        </Link>
+      </Card>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setFilter('inactive')}
-          className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-            filter === 'inactive'
-              ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-200'
-              : 'bg-white text-slate-600 ring-1 ring-slate-200'
-          }`}
-        >
-          30+ gün passiv ({inactiveCount})
-        </button>
         <button
           type="button"
           onClick={() => setFilter('all')}
@@ -94,6 +98,19 @@ export function NotificationsView() {
         >
           Hamısı ({items.length})
         </button>
+        {inactiveCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setFilter('inactive')}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              filter === 'inactive'
+                ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-200'
+                : 'bg-white text-slate-600 ring-1 ring-slate-200'
+            }`}
+          >
+            Köhnə passiv bildirişlər ({inactiveCount})
+          </button>
+        )}
         {unreadCount > 0 && (
           <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
             {unreadCount} oxunmamış
@@ -119,7 +136,7 @@ export function NotificationsView() {
           <p className="mt-3 font-medium text-slate-700">Bildiriş yoxdur</p>
           <p className="mt-1 text-sm text-slate-500">
             {filter === 'inactive'
-              ? '30 gündən çox sifariş verməyən müştəri tapılmadı'
+              ? 'Köhnə passiv bildiriş yoxdur — siyahı üçün Passiv müştərilər səhifəsinə keçin'
               : 'Hələ heç bir bildiriş yoxdur'}
           </p>
         </Card>

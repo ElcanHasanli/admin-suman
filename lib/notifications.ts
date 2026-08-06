@@ -27,7 +27,7 @@ export function getNotificationTargetPath(n: AdminNotification): string {
     if (cid != null && !Number.isNaN(cid)) {
       return `/dashboard/customers/detail/?id=${cid}`;
     }
-    return '/dashboard/customers';
+    return '/dashboard/customers/inactive';
   }
 
   const screen = (n.screen || n.data?.screen || '').toLowerCase() as PushScreen;
@@ -52,7 +52,7 @@ export function getNotificationTargetPath(n: AdminNotification): string {
 export function getNotificationTypeLabel(type: string): string {
   switch (type) {
     case 'customer_inactive':
-      return 'Passiv müştəri (30+ gün)';
+      return 'Passiv müştəri';
     case 'order_completed':
       return 'Sifariş tamamlandı';
     case 'expense_created':
