@@ -1,0 +1,188 @@
+fastlane_require 'dotenv'
+fastlane_require 'fileutils'
+
+default_platform(:ios)
+
+before_all do |lane, options|
+  env_name = lane.to_s.include?("dev") ? "local" : "production"
+  
+  project_root = File.expand_path("..", __dir__)
+  source_env   = File.join(project_root, ".env.#{env_name}")
+  dest_env     = File.join(project_root, ".env")
+
+  if File.exist?(source_env)
+    FileUtils.cp(source_env, dest_env)
+    UI.message("🔄 Env faylı aktivləşdirildi: .env.#{env_name} -> .env")
+  else
+    UI.user_error!("❌ Müvafiq env faylı tapılmadı: #{source_env}")
+  end
+
+  Dotenv.overload(dest_env)
+end
+
+platform :ios do
+
+  desc "TestFlight build (Unlisted və ya daxili test üçün)"
+lane :dev do |options|
+    bump_type = options[:bump] || "patch"
+    ios_notes = options[:notes] || "Dev build"
+    
+    bump_version(type: bump_type, env: "development", platform: "ios")
+
+    project_root = File.expand_path("..", __dir__)
+    UI.message("📁 project_root resolved to: #{project_root}")
+    Dir.chdir(project_root) do
+      sh("pwd")
+      sh("npx cap sync ios")
+    end
+
+    api_key = get_apple_api_key
+    match(type: "appstore", readonly: true, api_key: api_key)
+
+    increment_build_number(
+      build_number: ENV["VERSION_CODE"],
+      xcodeproj: "ios/App/App.xcodeproj"
+    )
+    increment_version_number(
+      version_number: ENV["VERSION_NAME"],
+      xcodeproj: "ios/App/App.xcodeproj"
+    )
+
+    update_project_team(
+      path: "ios/App/App.xcodeproj",
+      teamid: "2657ZL7TN5"
+    )
+    
+    build_app(
+      workspace: "ios/App/App.xcworkspace",
+      scheme: "App",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "az.khamsacraft.suman.admin" => "match AppStore az.khamsacraft.suman.admin"
+        }
+      }
+    )
+    
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: false,
+      apple_id: "6794842570",
+      distribute_external: true,
+      groups: ["External Testers"], # App Store Connect-dəki test qrupunun adı
+      changelog: "#{ios_notes} — v#{ENV['VERSION_NAME']} (#{ENV['VERSION_CODE']})"
+    )
+    UI.success("iOS TestFlight-a uğurla yükləndi!")
+  end
+
+  desc "App Store Production build (Unlisted App üçün də keçərlidir)"
+  lane :release do |options|
+    bump_type = options[:bump] || "patch"
+    ios_notes = options[:notes] || "Bug fixes and performance improvements."
+
+    bump_version(type: bump_type, env: "production", platform: "ios")
+
+    # Capacitor sync
+    project_root = File.expand_path("..", __dir__)
+    UI.message("📁 project_root resolved to: #{project_root}")
+    Dir.chdir(project_root) do
+      sh("pwd")
+      sh("npx cap sync ios")
+    end
+
+    api_key = get_apple_api_key
+    match(type: "appstore", readonly: true, api_key: api_key)
+
+    increment_build_number(
+      build_number: ENV["VERSION_CODE"],
+      xcodeproj: "ios/App/App.xcodeproj"
+    )
+    increment_version_number(
+      version_number: ENV["VERSION_NAME"],
+      xcodeproj: "ios/App/App.xcodeproj"
+    )
+
+    update_project_team(
+      path: "ios/App/App.xcodeproj",
+      teamid: "2657ZL7TN5"
+    )
+    
+    build_app(
+      workspace: "ios/App/App.xcworkspace",
+      scheme: "App",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "az.khamsacraft.suman.admin" => "match AppStore az.khamsacraft.suman.admin"
+        }
+      }
+    )
+    
+    upload_to_app_store(
+      api_key: api_key,
+      force: true,
+      app_version: ENV["VERSION_NAME"],
+      run_precheck_before_submit: false,
+      skip_metadata: false,
+      skip_screenshots: false,
+      submit_for_review: true,
+      submission_information: {
+        export_compliance_uses_encryption: false,
+        content_rights_contains_third_party_content: false
+      },
+      release_notes: {
+        "tr" => ios_notes
+      }
+    )
+    UI.success("iOS App Store-a yükləndi və Review-ya göndərildi!")
+  end
+
+end
+
+def get_apple_api_key
+  app_store_connect_api_key(
+    key_id: ENV["APPLE_API_KEY_ID"],
+    issuer_id: ENV["APPLE_ISSUER_ID"], # .env-dən oxuyacaq şəkildə ümumiləşdirdik
+    key_filepath: File.expand_path("../fastlane/AuthKey_#{ENV['APPLE_API_KEY_ID']}.p8", __dir__),
+    duration: 1200,
+    in_house: false
+  )
+end
+
+def bump_version(type: "patch", env: "production", platform: "ios")
+  # Artıq version.properties birbaşa fastlane qovluğunun içindədir[cite: 1]
+  props_path = File.expand_path("version.properties", __dir__)
+  props = File.read(props_path)
+
+  code_key = env == "development" ? "IOS_DEV_VERSION_CODE" : "IOS_VERSION_CODE"
+  name_key = env == "development" ? "IOS_DEV_VERSION_NAME" : "IOS_VERSION_NAME"
+
+  version_name = props.match(/^#{name_key}=(.+)/)[1].strip
+  parts = version_name.split(".").map(&:to_i)
+
+  case type
+  when "major" then parts[0] += 1; parts[1] = 0; parts[2] = 0
+  when "minor" then parts[1] += 1; parts[2] = 0
+  when "patch" then parts[2] += 1
+  end
+
+  new_version_name = parts.join(".")
+  version_code = props.match(/^#{code_key}=(\d+)/)[1].to_i + 1
+
+  new_props = props
+    .gsub(/^#{code_key}=\d+/, "#{code_key}=#{version_code}")
+    .gsub(/^#{name_key}=.+/, "#{name_key}=#{new_version_name}")
+  File.write(props_path, new_props)
+
+  ENV["VERSION_NAME"] = new_version_name
+  ENV["VERSION_CODE"] = version_code.to_s
+
+  UI.success("iOS #{env} version: #{version_name} → #{new_version_name} (#{version_code})")
+end
+
+after_all do |lane|
+  if lane_context[SharedValues::IPA_OUTPUT_PATH]
+    clean_build_artifacts
+    UI.message("Build artığı olan .ipa və .dSYM faylları təmizləndi.")
+  end
+end

@@ -1,0 +1,5 @@
+git_url("https://github.com/QR-Avan-Org/qravan-certificates")
+storage_mode("git")
+type("appstore")
+app_identifier("az.khamsacraft.suman.admin")
+username("<qravan.developer@gmail.com>")

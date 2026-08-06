@@ -189,3 +189,4 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
+fastlane/AuthKey_*.p8

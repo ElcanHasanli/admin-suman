@@ -1,0 +1,6 @@
+Login üçün email, şifrə və lisenziya kodu lazımdır.
+Email: vusal@suman.az
+Password: vusal123
+License code: SUMAN-1009-16
+
+This is a B2B admin panel for water delivery companies. Access is restricted to licensed companies only; an Unlisted App link will be used for distribution.

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="fastlane.lanes">
+    
+    
+    
+      
+      <testcase classname="fastlane.lanes" name="00: default_platform" time="0.000376">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="01: pwd" time="0.003563">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="02: npx cap sync ios" time="3.071702">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="03: app_store_connect_api_key" time="0.002132">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="04: match" time="2.136552">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="05: increment_build_number" time="0.117256">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="06: increment_version_number" time="0.154598">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="07: update_project_team" time="0.009556">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="08: build_app" time="37.954382">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="09: upload_to_app_store" time="232.788896">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="10: clean_build_artifacts" time="0.005882">
+        
+      </testcase>
+    
+  </testsuite>
+</testsuites>

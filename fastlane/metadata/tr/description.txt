@@ -1,0 +1,7 @@
+SuMan Admin — su çatdırılması şirkətləri üçün idarə paneli.
+- Sifarişlərin idarəsi
+- Müştəri və borc izləmə
+- Anbar (dolu/boş bidon)
+- Tarixçə və hesabatlar
+- Push bildirişlər
+Giriş lisenziya kodu ilə həyata keçirilir. Platform yalnız icazəli şirkətlər üçündür.
