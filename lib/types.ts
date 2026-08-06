@@ -97,9 +97,7 @@ export interface CustomersListResponse {
   limit: number;
 }
 
-/** Passiv müştərilər — seçilmiş tarix aralığında sifariş verməyən + active_bidons > 0 */
-export type InactiveCustomersPeriod = 'custom' | 'week' | 'days2' | 'month' | 'days';
-
+/** Problemli/passiv müştərilər — son 30 gün sifariş yox + active_bidons > 0 */
 export interface InactiveCustomer {
   id: number;
   name?: string;
@@ -117,18 +115,13 @@ export interface InactiveCustomer {
 }
 
 export interface InactiveCustomersParams {
-  period?: string;
-  startDate?: string;
-  endDate?: string;
-  /** Son N gün — period əvəzinə */
-  days?: number;
   q?: string;
   page?: number;
   limit?: number;
 }
 
 export interface InactiveCustomersResponse {
-  period: string;
+  period?: string;
   days?: number | null;
   startDate?: string;
   endDate?: string;

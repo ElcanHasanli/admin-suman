@@ -57,8 +57,8 @@ export const dashboardNav: DashboardNavItem[] = [
   },
   {
     href: '/dashboard/customers/inactive',
-    label: 'Passiv müştərilər',
-    shortLabel: 'Passiv',
+    label: 'Problemli müştərilər',
+    shortLabel: 'Problemli',
     icon: UserX,
   },
   {

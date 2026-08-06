@@ -508,20 +508,6 @@ export function resolveMonthlyHistoryParams(
   return { period: 'month' };
 }
 
-/** Passiv müştərilər — month/week/days2/custom və ya son N gün */
-export function resolveInactiveCustomersParams(
-  preset: 'days2' | 'week' | 'month' | 'custom' | 'days',
-  dateFrom: string,
-  dateTo: string,
-  days: number
-): { period?: string; startDate?: string; endDate?: string; days?: number } {
-  if (preset === 'days') {
-    const n = Math.max(1, Math.floor(Number(days) || 0));
-    return n > 0 ? { days: n } : { period: 'month' };
-  }
-  return resolveMonthlyHistoryParams(preset, dateFrom, dateTo);
-}
-
 /** Tarixçə period — today | yesterday | week | month | custom */
 export function resolveHistoryPeriodParams(
   preset: HistoryPeriod,

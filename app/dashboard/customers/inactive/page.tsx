@@ -5,8 +5,8 @@ export default function InactiveCustomersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Passiv müştərilər"
-        description="Seçilmiş tarix aralığında sifariş verməyən və qalıq bidonu olan müştərilər"
+        title="Problemli müştərilər"
+        description="Son 30 gün sifariş verməyən və qalıq bidonu olan müştərilər"
       />
       <InactiveCustomersView />
     </div>

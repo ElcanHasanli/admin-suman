@@ -375,7 +375,7 @@ export async function getDebtors(
 
 export const INACTIVE_CUSTOMERS_DEFAULT_PAGE_SIZE = 50;
 
-/** Seçilmiş tarix aralığında sifariş verməyən + qalıq bidonu olan müştərilər */
+/** Son 30 gün sifariş verməyən + qalıq bidonu olan müştərilər */
 export async function getInactiveCustomers(
   params: InactiveCustomersParams = {}
 ): Promise<InactiveCustomersResponse> {
@@ -388,13 +388,6 @@ export async function getInactiveCustomers(
     page: String(page),
     limit: String(limit),
   });
-  if (params.days != null && params.days > 0) {
-    searchParams.set('days', String(params.days));
-  } else if (params.period) {
-    searchParams.set('period', params.period);
-  }
-  if (params.startDate) searchParams.set('startDate', params.startDate);
-  if (params.endDate) searchParams.set('endDate', params.endDate);
   const q = params.q?.trim();
   if (q) searchParams.set('q', q);
 

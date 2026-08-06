@@ -15,16 +15,9 @@ import {
   getCustomerDebt,
   getCustomerName,
   getCustomerPhone,
-  resolveInactiveCustomersParams,
   truncateAddress,
 } from '@/lib/utils';
-import {
-  InactivePeriodButtons,
-  useInactivePeriodState,
-} from '@/components/history/HistoryPeriodPresets';
-import { Button } from '@/components/ui/Button';
 import { Card, StatCard } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { TableScroll } from '@/components/ui/TableScroll';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
@@ -45,15 +38,12 @@ function formatLastOrder(c: InactiveCustomer): string {
 
 export function InactiveCustomersView() {
   const router = useRouter();
-  const period = useInactivePeriodState('month');
   const [customers, setCustomers] = useState<InactiveCustomer[]>([]);
   const [total, setTotal] = useState(0);
-  const [rangeLabel, setRangeLabel] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [daysInput, setDaysInput] = useState(String(period.days));
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   useEffect(() => {
@@ -63,40 +53,18 @@ export function InactiveCustomersView() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, period.preset, period.dateFrom, period.dateTo, period.days]);
-
-  useEffect(() => {
-    setDaysInput(String(period.days));
-  }, [period.days]);
+  }, [debouncedSearch]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const resolved = resolveInactiveCustomersParams(
-        period.preset,
-        period.dateFrom,
-        period.dateTo,
-        period.days
-      );
       const data = await getInactiveCustomers({
-        ...resolved,
         page,
         limit: INACTIVE_CUSTOMERS_DEFAULT_PAGE_SIZE,
         q: debouncedSearch || undefined,
       });
       setCustomers(data.customers ?? []);
       setTotal(data.total ?? 0);
-      if (data.startDate && data.endDate) {
-        setRangeLabel(
-          data.startDate === data.endDate
-            ? data.startDate
-            : `${data.startDate} — ${data.endDate}`
-        );
-      } else if (data.days) {
-        setRangeLabel(`Son ${data.days} gün`);
-      } else {
-        setRangeLabel(data.period || '');
-      }
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : 'Siyahı yüklənə bilmədi',
@@ -105,14 +73,7 @@ export function InactiveCustomersView() {
     } finally {
       setLoading(false);
     }
-  }, [
-    page,
-    debouncedSearch,
-    period.preset,
-    period.dateFrom,
-    period.dateTo,
-    period.days,
-  ]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => {
     void load();
@@ -124,84 +85,27 @@ export function InactiveCustomersView() {
     router.push(`/dashboard/customers/detail/?id=${id}`);
   };
 
-  const applyDays = () => {
-    const n = Math.max(1, Math.floor(Number(daysInput) || 0));
-    if (!n) {
-      setToast({ message: 'Gün sayı düzgün deyil', type: 'error' });
-      return;
-    }
-    period.setDays(n);
-    setDaysInput(String(n));
-  };
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-3 sm:max-w-xs">
         <StatCard
-          title="Passiv müştəri"
+          title="Problemli müştəri"
           value={loading ? '...' : total}
-          subtitle={loading ? undefined : rangeLabel || undefined}
+          subtitle="Son 30 gün sifariş yox · qalıq bidon > 0"
           icon={<UserX size={20} />}
           accent="amber"
         />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <InactivePeriodButtons preset={period.preset} onPresetChange={period.setPreset} />
-        <div className="relative w-full sm:ml-auto sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ad, telefon və ya ünvan axtar..."
-            className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-          />
-        </div>
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Ad, telefon və ya ünvan axtar..."
+          className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+        />
       </div>
-
-      {period.preset === 'custom' && (
-        <Card className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
-            <Input
-              label="Başlanğıc tarixi"
-              type="date"
-              value={period.dateFrom}
-              onChange={(e) => period.setDateFrom(e.target.value)}
-            />
-            <Input
-              label="Son tarix"
-              type="date"
-              value={period.dateTo}
-              onChange={(e) => period.setDateTo(e.target.value)}
-            />
-            <Button type="button" variant="secondary" onClick={() => void load()} className="w-full sm:w-auto">
-              Tətbiq et
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {period.preset === 'days' && (
-        <Card className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-            <div className="flex-1 sm:max-w-xs">
-              <Input
-                label="Son N gün"
-                type="number"
-                min={1}
-                value={daysInput}
-                onChange={(e) => setDaysInput(e.target.value)}
-              />
-            </div>
-            <Button type="button" variant="secondary" onClick={applyDays} className="w-full sm:w-auto">
-              Tətbiq et
-            </Button>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Bu günlərdə sifariş verməyən və qalıq bidonu olan müştərilər.
-          </p>
-        </Card>
-      )}
 
       <Card className="overflow-hidden">
         <MobileOnly>
@@ -209,7 +113,7 @@ export function InactiveCustomersView() {
             {loading ? (
               <MobileEmpty>Yüklənir...</MobileEmpty>
             ) : customers.length === 0 ? (
-              <MobileEmpty>Passiv müştəri tapılmadı</MobileEmpty>
+              <MobileEmpty>Problemli müştəri tapılmadı</MobileEmpty>
             ) : (
               <MobileCardList>
                 {customers.map((c) => (
@@ -267,7 +171,7 @@ export function InactiveCustomersView() {
                 ) : customers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-12 text-center text-slate-400">
-                      Passiv müştəri tapılmadı
+                      Problemli müştəri tapılmadı
                     </td>
                   </tr>
                 ) : (

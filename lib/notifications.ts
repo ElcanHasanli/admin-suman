@@ -52,7 +52,7 @@ export function getNotificationTargetPath(n: AdminNotification): string {
 export function getNotificationTypeLabel(type: string): string {
   switch (type) {
     case 'customer_inactive':
-      return 'Passiv müştəri';
+      return 'Passiv müştəri (30+ gün)';
     case 'order_completed':
       return 'Sifariş tamamlandı';
     case 'expense_created':
