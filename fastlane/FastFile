@@ -91,7 +91,7 @@ lane :dev do |options|
     end
 
     api_key = get_apple_api_key
-    match(type: "appstore", readonly: true, api_key: api_key)
+    match(type: "appstore", readonly: false, force: true, api_key: api_key)
 
     increment_build_number(
       build_number: ENV["VERSION_CODE"],
