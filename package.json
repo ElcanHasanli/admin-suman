@@ -8,7 +8,7 @@
     "build:mobile": "NEXT_PUBLIC_API_URL=https://api.suman.khamsacraft.az/api next build",
     "start": "next start",
     "lint": "eslint",
-    "cap:sync": "npm run build:mobile && npx cap sync",
+    "cap:sync": "npm run build:mobile && sh -c 'export PATH=\"$(brew --prefix ruby 2>/dev/null)/bin:$PATH\"; npx cap sync'",
     "cap:ios": "npm run cap:sync && npx cap open ios",
     "cap:android": "npm run cap:sync && npx cap open android",
     "ios": "npm run cap:ios",

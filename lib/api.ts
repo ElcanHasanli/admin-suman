@@ -7,6 +7,7 @@ import type {
   CustomerPayload,
   CustomersListParams,
   CustomersListResponse,
+  CustomerFilterOptions,
   DebtPayment,
   Expense,
   ExpensePayload,
@@ -298,6 +299,42 @@ function paginateCustomersList(
   };
 }
 
+function buildCustomersSearchParams(params: CustomersListParams): URLSearchParams {
+  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.max(
+    1,
+    Math.min(params.limit ?? CUSTOMERS_DEFAULT_PAGE_SIZE, 100)
+  );
+  const searchParams = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+
+  const q = params.q?.trim();
+  if (q) searchParams.set('q', q);
+
+  const name = params.name?.trim();
+  if (name) searchParams.set('name', name);
+
+  const address = params.address?.trim();
+  if (address) searchParams.set('address', address);
+
+  const phone = params.phone?.trim();
+  if (phone) searchParams.set('phone', phone);
+
+  if (params.price != null && String(params.price).trim() !== '') {
+    searchParams.set('price', String(params.price).trim());
+  }
+  if (params.price_min != null && String(params.price_min).trim() !== '') {
+    searchParams.set('price_min', String(params.price_min).trim());
+  }
+  if (params.price_max != null && String(params.price_max).trim() !== '') {
+    searchParams.set('price_max', String(params.price_max).trim());
+  }
+
+  return searchParams;
+}
+
 /** Paginated siyahı; köhnə API (yalnız massiv) üçün client-side fallback */
 export async function getCustomers(
   params: CustomersListParams = {}
@@ -307,13 +344,8 @@ export async function getCustomers(
     1,
     Math.min(params.limit ?? CUSTOMERS_DEFAULT_PAGE_SIZE, 100)
   );
+  const searchParams = buildCustomersSearchParams({ ...params, page, limit });
   const q = params.q?.trim() ?? '';
-
-  const searchParams = new URLSearchParams({
-    page: String(page),
-    limit: String(limit),
-  });
-  if (q) searchParams.set('q', q);
 
   const data = await request<unknown>(`/customers?${searchParams}`);
 
@@ -327,6 +359,10 @@ export async function getCustomers(
         total: Number(totalRaw) || 0,
         page: Number(obj.page) || page,
         limit: Number(obj.limit) || limit,
+        filters:
+          obj.filters && typeof obj.filters === 'object'
+            ? (obj.filters as CustomersListResponse['filters'])
+            : undefined,
       };
     }
     let list = customers;
@@ -337,6 +373,14 @@ export async function getCustomers(
   let list = unwrapList<Customer>(data, ['customers']);
   if (q) list = filterCustomersByQuery(list, q);
   return paginateCustomersList(list, page, limit);
+}
+
+export async function getCustomerFilterOptions(): Promise<CustomerFilterOptions> {
+  const data = await request<{ prices?: number[] }>('/customers/filter-options');
+  const prices = Array.isArray(data.prices)
+    ? data.prices.map((p) => Number(p)).filter((p) => !Number.isNaN(p))
+    : [];
+  return { prices };
 }
 
 export async function getCustomerById(id: number): Promise<CustomerDetailResponse> {
@@ -435,8 +479,14 @@ export async function deleteCustomer(id: number) {
   return request(`/customers/${id}`, { method: 'DELETE' });
 }
 
-export async function exportCustomersExcel(): Promise<Blob> {
-  return requestBlob('/customers/export');
+export async function exportCustomersExcel(
+  params: Omit<CustomersListParams, 'page' | 'limit'> = {}
+): Promise<Blob> {
+  const searchParams = buildCustomersSearchParams({ ...params, page: 1, limit: 100 });
+  searchParams.delete('page');
+  searchParams.delete('limit');
+  const qs = searchParams.toString();
+  return requestBlob(`/customers/export${qs ? `?${qs}` : ''}`);
 }
 
 export async function getOrders(params?: OrdersListParams): Promise<Order[]> {

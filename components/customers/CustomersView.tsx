@@ -1,16 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Pencil, Trash2, Download, Search, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, Search, ChevronRight, X } from 'lucide-react';
 import {
   CUSTOMERS_DEFAULT_PAGE_SIZE,
   deleteCustomer,
   exportCustomersExcel,
   getCustomerDepositTotals,
+  getCustomerFilterOptions,
   getCustomers,
 } from '@/lib/api';
-import type { Customer, CustomerDepositTotals } from '@/lib/types';
+import type { Customer, CustomerDepositTotals, CustomersListParams } from '@/lib/types';
 import {
   downloadBlob,
   getExportErrorMessage,
@@ -44,13 +45,40 @@ import {
   MobileEmpty,
 } from '@/components/ui/MobileCards';
 
+type CustomerFiltersState = {
+  name: string;
+  address: string;
+  phone: string;
+  price: string;
+};
+
+const EMPTY_FILTERS: CustomerFiltersState = {
+  name: '',
+  address: '',
+  phone: '',
+  price: '',
+};
+
+function filtersToParams(
+  filters: CustomerFiltersState
+): Omit<CustomersListParams, 'page' | 'limit'> {
+  return {
+    name: filters.name.trim() || undefined,
+    address: filters.address.trim() || undefined,
+    phone: filters.phone.trim() || undefined,
+    price: filters.price.trim() || undefined,
+  };
+}
+
 export function CustomersView() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filters, setFilters] = useState<CustomerFiltersState>(EMPTY_FILTERS);
+  const [debouncedFilters, setDebouncedFilters] =
+    useState<CustomerFiltersState>(EMPTY_FILTERS);
+  const [priceOptions, setPriceOptions] = useState<number[]>([]);
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
@@ -62,13 +90,28 @@ export function CustomersView() {
     setToast({ message, type });
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const timer = setTimeout(() => setDebouncedFilters(filters), 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [filters]);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedFilters]);
+
+  useEffect(() => {
+    void getCustomerFilterOptions()
+      .then((opts) => setPriceOptions(opts.prices))
+      .catch(() => setPriceOptions([]));
+  }, []);
+
+  const filterParams = useMemo(
+    () => filtersToParams(debouncedFilters),
+    [debouncedFilters]
+  );
+
+  const hasActiveFilters = Boolean(
+    filterParams.name || filterParams.address || filterParams.phone || filterParams.price
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,7 +120,7 @@ export function CustomersView() {
         getCustomers({
           page,
           limit: CUSTOMERS_DEFAULT_PAGE_SIZE,
-          q: debouncedSearch || undefined,
+          ...filterParams,
         }),
         getCustomerDepositTotals().catch(() => null),
       ]);
@@ -94,7 +137,7 @@ export function CustomersView() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, filterParams]);
 
   useEffect(() => {
     load();
@@ -116,7 +159,7 @@ export function CustomersView() {
 
   const handleExport = async () => {
     try {
-      const blob = await exportCustomersExcel();
+      const blob = await exportCustomersExcel(filtersToParams(filters));
       await downloadBlob(blob, `musteriler_${formatLocalDate()}.xlsx`);
       showToast(getExportSuccessMessage(), 'success');
     } catch (err) {
@@ -141,11 +184,20 @@ export function CustomersView() {
     }
   };
 
+  const clearFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    setDebouncedFilters(EMPTY_FILTERS);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6">
       <Toolbar
-        search={search}
-        onSearch={setSearch}
+        filters={filters}
+        onFiltersChange={setFilters}
+        priceOptions={priceOptions}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearFilters}
         onExport={handleExport}
         onCreate={openCreate}
       />
@@ -179,6 +231,7 @@ export function CustomersView() {
                       <MobileCardField
                         label="Qiymət"
                         value={formatCurrency(getCustomerPrice(c))}
+                        valueClassName="text-base font-bold text-slate-900"
                       />
                       <MobileCardField label="Bidon" value={getCustomerActiveBidons(c)} />
                       <MobileCardField
@@ -188,11 +241,15 @@ export function CustomersView() {
                       <MobileCardField
                         label="Borc"
                         value={formatCurrency(getCustomerDebt(c))}
-                        valueClassName={getCustomerDebt(c) > 0 ? 'text-red-600' : ''}
+                        valueClassName={
+                          getCustomerDebt(c) > 0
+                            ? 'text-base font-bold text-red-600'
+                            : 'text-base font-bold text-emerald-600'
+                        }
                       />
                     </MobileCardGrid>
                     {c.address && (
-                      <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                      <p className="mt-3 line-clamp-3 text-sm font-bold leading-relaxed text-slate-800">
                         {c.address}
                       </p>
                     )}
@@ -269,36 +326,86 @@ export function CustomersView() {
 }
 
 function Toolbar({
-  search,
-  onSearch,
+  filters,
+  onFiltersChange,
+  priceOptions,
+  hasActiveFilters,
+  onClearFilters,
   onExport,
   onCreate,
 }: {
-  search: string;
-  onSearch: (v: string) => void;
+  filters: CustomerFiltersState;
+  onFiltersChange: (next: CustomerFiltersState) => void;
+  priceOptions: number[];
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
   onExport: () => void;
   onCreate: () => void;
 }) {
+  const setField = (key: keyof CustomerFiltersState, value: string) => {
+    onFiltersChange({ ...filters, [key]: value });
+  };
+
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100';
+
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="relative max-w-md flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+    <div className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            value={filters.name}
+            onChange={(e) => setField('name', e.target.value)}
+            placeholder="Ad / soyad"
+            className={`${inputClass} pl-9`}
+          />
+        </div>
         <input
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          placeholder="Ad, telefon və ya ünvan axtar..."
-          className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          value={filters.phone}
+          onChange={(e) => setField('phone', e.target.value)}
+          placeholder="Telefon"
+          className={inputClass}
         />
+        <input
+          value={filters.address}
+          onChange={(e) => setField('address', e.target.value)}
+          placeholder="Ünvan"
+          className={inputClass}
+        />
+        <select
+          value={filters.price}
+          onChange={(e) => setField('price', e.target.value)}
+          className={inputClass}
+        >
+          <option value="">Qiymət: Hamısı</option>
+          {priceOptions.map((p) => (
+            <option key={p} value={String(p)}>
+              {formatCurrency(p)}
+            </option>
+          ))}
+        </select>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
-        <Button variant="secondary" onClick={onExport} className="w-full sm:w-auto">
-          <Download size={16} />
-          Excel
-        </Button>
-        <Button onClick={onCreate} className="w-full sm:w-auto">
-          <Plus size={16} />
-          Yeni müştəri
-        </Button>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {hasActiveFilters && (
+            <Button type="button" variant="secondary" onClick={onClearFilters} className="text-xs">
+              <X size={14} />
+              Filterləri təmizlə
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
+          <Button variant="secondary" onClick={onExport} className="w-full sm:w-auto">
+            <Download size={16} />
+            Excel
+          </Button>
+          <Button onClick={onCreate} className="w-full sm:w-auto">
+            <Plus size={16} />
+            Yeni müştəri
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -450,7 +557,7 @@ function CustomersTable({
                 </td>
                 <td
                   className={`px-3 py-3 font-semibold sm:px-5 sm:py-3.5 ${
-                    getCustomerDebt(c) > 0 ? 'text-red-600' : 'text-slate-600'
+                    getCustomerDebt(c) > 0 ? 'text-red-600' : 'text-emerald-600'
                   }`}
                 >
                   {formatCurrency(getCustomerDebt(c))}

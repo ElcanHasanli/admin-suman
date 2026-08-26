@@ -86,8 +86,25 @@ export interface CustomerPayload {
 export interface CustomersListParams {
   page?: number;
   limit?: number;
-  /** Ad, telefon, ünvan üzrə axtarış */
+  /** Köhnə ümumi axtarış (ad / telefon / ünvan) */
   q?: string;
+  name?: string;
+  address?: string;
+  phone?: string;
+  /** Dəqiq qiymət */
+  price?: number | string;
+  price_min?: number | string;
+  price_max?: number | string;
+}
+
+export interface CustomersListFilters {
+  name?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  price?: number | string | null;
+  price_min?: number | string | null;
+  price_max?: number | string | null;
+  q?: string | null;
 }
 
 export interface CustomersListResponse {
@@ -95,6 +112,11 @@ export interface CustomersListResponse {
   total: number;
   page: number;
   limit: number;
+  filters?: CustomersListFilters;
+}
+
+export interface CustomerFilterOptions {
+  prices: number[];
 }
 
 /** Problemli/passiv müştərilər — son 30 gün sifariş yox + active_bidons > 0 */

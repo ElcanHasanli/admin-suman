@@ -190,3 +190,7 @@ vite.config.ts.timestamp-*
 .vite/
 
 fastlane/AuthKey_*.p8
+
+# Bundler (fastlane/cocoapods — lokal quraşdırma)
+/vendor/bundle/
+/.bundle/
