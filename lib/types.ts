@@ -246,10 +246,16 @@ export interface Order {
   customer?: { name?: string; surname?: string; phone?: string; display_name?: string };
   courier_name?: string;
   bidons_count?: number;
-  /** Tamamlamada müştəriyə verilən dolu bidon (tamamlanmamışda null) */
+  /** Verilən dolu bidon (tamamlanmamışda planlaşdırılan say) */
   full_bidons_given?: number | null;
-  /** Tamamlamada müştəridən alınan boş bidon (tamamlanmamışda null) */
+  /** Götürülən boş bidon (aktiv sifarişdə null) */
   empty_bidons_returned?: number | null;
+  /** Sifariş yaradılanda müştəridə boş bidon */
+  customer_active_bidons_before?: number | null;
+  /** assigned / in_progress — müştəridə boş bidon (köhnə qeydlərdə fallback: cari active_bidons) */
+  customer_empty_bidons_during?: number | null;
+  /** Tamamlandıqdan sonra müştəridə qalan boş bidon */
+  customer_active_bidons_after?: number | null;
   unit_price?: number | string;
   address?: string;
   price?: number | string;

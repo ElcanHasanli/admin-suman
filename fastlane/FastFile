@@ -31,10 +31,7 @@ lane :dev do |options|
 
     project_root = File.expand_path("..", __dir__)
     UI.message("📁 project_root resolved to: #{project_root}")
-    Dir.chdir(project_root) do
-      sh("pwd")
-      sh("npx cap sync ios")
-    end
+    sync_capacitor_ios(project_root)
 
     api_key = get_apple_api_key
     match(type: "appstore", readonly: true, api_key: api_key)
@@ -69,7 +66,7 @@ lane :dev do |options|
       skip_waiting_for_build_processing: false,
       apple_id: "6794842570",
       distribute_external: true,
-      groups: ["External Testers"], # App Store Connect-dəki test qrupunun adı
+      groups: ["External Testers"],
       changelog: "#{ios_notes} — v#{ENV['VERSION_NAME']} (#{ENV['VERSION_CODE']})"
     )
     UI.success("iOS TestFlight-a uğurla yükləndi!")
@@ -82,13 +79,9 @@ lane :dev do |options|
 
     bump_version(type: bump_type, env: "production", platform: "ios")
 
-    # Capacitor sync
     project_root = File.expand_path("..", __dir__)
     UI.message("📁 project_root resolved to: #{project_root}")
-    Dir.chdir(project_root) do
-      sh("pwd")
-      sh("npx cap sync ios")
-    end
+    sync_capacitor_ios(project_root)
 
     api_key = get_apple_api_key
     match(type: "appstore", readonly: false, force: true, api_key: api_key)
@@ -139,10 +132,42 @@ lane :dev do |options|
 
 end
 
+# `bundle exec fastlane` uşaq prosesə BUNDLE_* ötürür; Capacitor isə kök Gemfile
+# görəndə `bundle exec pod` işlədir (Ruby 4 + vendor binstub pozulur).
+# Sync: Gemfile gizlə + Bundler env sil + Homebrew pod.
+def sync_capacitor_ios(project_root)
+  Dir.chdir(project_root) do
+    gemfile = File.join(project_root, "Gemfile")
+    lockfile = File.join(project_root, "Gemfile.lock")
+    bundle_dir = File.join(project_root, ".bundle")
+    gemfile_tmp = "#{gemfile}.cap_sync_bak"
+    lock_tmp = "#{lockfile}.cap_sync_bak"
+    bundle_tmp = "#{bundle_dir}.cap_sync_bak"
+
+    FileUtils.mv(gemfile, gemfile_tmp) if File.exist?(gemfile)
+    FileUtils.mv(lockfile, lock_tmp) if File.exist?(lockfile)
+    FileUtils.mv(bundle_dir, bundle_tmp) if File.directory?(bundle_dir)
+    begin
+      sh("npm run build:mobile")
+      # Parent `bundle exec`-dən gələn env-i sil; Cap düz `pod` çağırsın
+      sh(
+        'env -u BUNDLE_GEMFILE -u BUNDLE_BIN_PATH -u BUNDLE_ORIGINATING_GEM ' \
+        '-u BUNDLER_VERSION -u BUNDLE_PATH -u RUBYOPT ' \
+        'PATH="$(brew --prefix)/bin:$(brew --prefix ruby)/bin:$PATH" ' \
+        'npx cap sync ios'
+      )
+    ensure
+      FileUtils.mv(gemfile_tmp, gemfile) if File.exist?(gemfile_tmp)
+      FileUtils.mv(lock_tmp, lockfile) if File.exist?(lock_tmp)
+      FileUtils.mv(bundle_tmp, bundle_dir) if File.directory?(bundle_tmp)
+    end
+  end
+end
+
 def get_apple_api_key
   app_store_connect_api_key(
     key_id: ENV["APPLE_API_KEY_ID"],
-    issuer_id: ENV["APPLE_ISSUER_ID"], # .env-dən oxuyacaq şəkildə ümumiləşdirdik
+    issuer_id: ENV["APPLE_ISSUER_ID"],
     key_filepath: File.expand_path("../fastlane/AuthKey_#{ENV['APPLE_API_KEY_ID']}.p8", __dir__),
     duration: 1200,
     in_house: false
@@ -150,7 +175,6 @@ def get_apple_api_key
 end
 
 def bump_version(type: "patch", env: "production", platform: "ios")
-  # Artıq version.properties birbaşa fastlane qovluğunun içindədir[cite: 1]
   props_path = File.expand_path("version.properties", __dir__)
   props = File.read(props_path)
 

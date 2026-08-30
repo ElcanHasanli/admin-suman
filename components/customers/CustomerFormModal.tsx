@@ -149,13 +149,17 @@ export function CustomerFormModal({
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             placeholder="050 123 45 67"
+            inputMode="tel"
             required
+            className="!py-3 !text-lg !font-bold !text-slate-900"
           />
           <Input
             label="Telefon 2 (opsional)"
             value={form.phone2}
             onChange={(e) => setForm({ ...form, phone2: e.target.value })}
             placeholder="055 999 88 77"
+            inputMode="tel"
+            className="!py-3 !text-lg !font-bold !text-slate-900"
           />
           <Input
             label="Qiymət (₼/bidon)"
@@ -167,11 +171,13 @@ export function CustomerFormModal({
             required
           />
           <div className="sm:col-span-2">
-            <Input
-              label="Ünvan"
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Ünvan</label>
+            <textarea
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               required
+              rows={3}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-base font-semibold leading-relaxed text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 sm:text-lg"
             />
           </div>
           <Input

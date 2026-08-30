@@ -359,8 +359,11 @@ export function getOrderBidonCount(order: Order): number {
   return order.bidons_count ?? 0;
 }
 
-/** Verilən dolu bidon — tamamlanmayıbsa bidons_count-a fallback */
+/** Verilən dolu bidon — pickup-da 0; tamamlanmayıbsa bidons_count */
 export function getOrderFullBidonsGiven(order: Order): number {
+  if ((order.order_type || '').toLowerCase() === 'pickup') {
+    return Number(order.full_bidons_given) || 0;
+  }
   if (order.full_bidons_given != null) return Number(order.full_bidons_given) || 0;
   return order.bidons_count ?? 0;
 }
@@ -371,12 +374,57 @@ export function getOrderEmptyBidonsReturned(order: Order): number | null {
   return Number(order.empty_bidons_returned) || 0;
 }
 
-/** "2 dolu · 2 boş" formatında qısa xülasə */
-export function formatOrderBidonSummary(order: Order): string {
-  const full = getOrderFullBidonsGiven(order);
+function nullableBidonCount(value?: number | null): number | null {
+  if (value == null || value === ('' as unknown)) return null;
+  const n = Number(value);
+  return Number.isNaN(n) ? null : n;
+}
+
+/** assigned / in_progress — müştəridə boş */
+export function getCustomerEmptyBidonsDuring(order: Order): number | null {
+  const during = nullableBidonCount(order.customer_empty_bidons_during);
+  if (during != null) return during;
+  const status = getOrderStatus(order);
+  if (status === 'assigned' || status === 'in_progress') {
+    return nullableBidonCount(order.customer_active_bidons_before);
+  }
+  return null;
+}
+
+/** completed — sonra qalan boş */
+export function getCustomerActiveBidonsAfter(order: Order): number | null {
+  if (getOrderStatus(order) !== 'completed') return null;
+  return nullableBidonCount(order.customer_active_bidons_after);
+}
+
+/** Sifariş sətirində bidon xülasəsi: `2 dolu · 1 boş götürüldü · müştəridə 3 boş` */
+export function formatOrderBidons(order: Order): string {
+  const isPickup = (order.order_type || '').toLowerCase() === 'pickup';
+  const parts: string[] = [];
+  if (isPickup) {
+    parts.push(`${getOrderBidonCount(order)} boş götürmə`);
+  } else {
+    parts.push(`${getOrderBidonCount(order)} dolu`);
+  }
   const empty = getOrderEmptyBidonsReturned(order);
-  if (empty == null) return `${full} dolu`;
-  return `${full} dolu · ${empty} boş`;
+  if (empty != null) {
+    parts.push(`${empty} boş götürüldü`);
+  }
+  const during = getCustomerEmptyBidonsDuring(order);
+  if (during != null) {
+    parts.push(`müştəridə ${during} boş`);
+  } else {
+    const after = getCustomerActiveBidonsAfter(order);
+    if (after != null) {
+      parts.push(`sonra ${after} boş qaldı`);
+    }
+  }
+  return parts.join(' · ');
+}
+
+/** @deprecated — use formatOrderBidons */
+export function formatOrderBidonSummary(order: Order): string {
+  return formatOrderBidons(order);
 }
 
 export function getOrderStatus(order: Order): string {

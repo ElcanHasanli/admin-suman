@@ -71,6 +71,7 @@ import {
   isOrderCompleted,
   normalizeDate,
   truncateAddress,
+  formatOrderBidons,
 } from '@/lib/utils';
 import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
 import { Button } from '@/components/ui/Button';
@@ -145,17 +146,21 @@ const emptyOrderForm = {
 export function OrdersView({
   prefillCustomerId = null,
   openOrderId = null,
+  initialStatus = '',
+  initialCourier = '',
 }: {
   prefillCustomerId?: number | null;
   openOrderId?: number | null;
+  initialStatus?: StatusFilter;
+  initialCourier?: CourierFilter;
 }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
-  const [courierFilter, setCourierFilter] = useState<CourierFilter>('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
+  const [courierFilter, setCourierFilter] = useState<CourierFilter>(initialCourier);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -211,6 +216,28 @@ export function OrdersView({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (statusFilter === 'today_completed') {
+      params.set('completedToday', 'true');
+      params.delete('status');
+    } else if (statusFilter) {
+      params.set('status', statusFilter);
+      params.delete('completedToday');
+    } else {
+      params.delete('status');
+      params.delete('completedToday');
+    }
+    if (courierFilter === '') params.delete('courier_id');
+    else params.set('courier_id', String(courierFilter));
+    const qs = params.toString();
+    const next = `${window.location.pathname}${qs ? `?${qs}` : ''}`;
+    if (next !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(null, '', next);
+    }
+  }, [statusFilter, courierFilter]);
 
   useEffect(() => {
     const q = customerSearch.trim();
@@ -658,7 +685,7 @@ export function OrdersView({
                       {getOrderCustomerName(order)}
                     </MobileCardTitle>
                     <MobileCardGrid>
-                      <MobileCardField label="Bidon" value={getOrderBidonCount(order)} />
+                      <MobileCardField label="Bidon" value={formatOrderBidons(order)} />
                       <MobileCardField
                         label="Qiymət"
                         value={formatCurrency(order.price)}
@@ -768,7 +795,9 @@ export function OrdersView({
                     <td className="hidden px-3 py-3 text-slate-600 sm:table-cell sm:px-5 sm:py-3.5">
                       {getOrderCourierName(order)}
                     </td>
-                    <td className="px-3 py-3 font-semibold sm:px-5 sm:py-3.5">{getOrderBidonCount(order)}</td>
+                    <td className="px-3 py-3 text-xs font-semibold leading-snug sm:px-5 sm:py-3.5">
+                      {formatOrderBidons(order)}
+                    </td>
                     <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{formatCurrency(order.price)}</td>
                     <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
                       <span className="flex flex-col gap-0.5 whitespace-nowrap">
@@ -944,9 +973,11 @@ export function OrdersView({
                       onChange={(e) => setDebtInput(e.target.value)}
                       disabled={!!editOrder}
                     />
-                    <div className="text-sm text-slate-600">
-                      <p className="font-medium text-slate-700">Aktiv bidon</p>
-                      <p className="mt-1">{getCustomerActiveBidons(selectedCustomer)}</p>
+                    <div className="text-slate-600">
+                      <p className="text-sm font-medium text-slate-700">Aktiv bidon</p>
+                      <p className="mt-1 text-2xl font-bold text-slate-900">
+                        {getCustomerActiveBidons(selectedCustomer)}
+                      </p>
                     </div>
                   </div>
                   {previewLastNote && (
@@ -974,12 +1005,16 @@ export function OrdersView({
 
           <div className="grid gap-4 sm:grid-cols-2">
             {!isPickup && (
-              <Input
-                label="Ünvan"
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                required
-              />
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Ünvan</label>
+                <textarea
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  required
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-base font-bold leading-relaxed text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 sm:text-lg"
+                />
+              </div>
             )}
             <Input
               label={isPickup ? 'Götürüləcək boş bidon' : 'Bidon sayı'}
@@ -988,6 +1023,7 @@ export function OrdersView({
               value={form.bidons}
               onChange={(e) => setForm({ ...form, bidons: e.target.value })}
               required
+              className="!py-3.5 !text-2xl !font-bold !text-slate-900"
             />
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">Kuryer</label>
@@ -1146,19 +1182,22 @@ export function OrdersView({
               </div>
             )}
             {!isPickup && estimatedPrice > 0 && (
-              <p className="sm:col-span-2 text-sm text-slate-600">
-                Təxmini məbləğ: <strong>{formatCurrency(estimatedPrice)}</strong>
+              <div className="sm:col-span-2 rounded-xl bg-sky-50 px-4 py-3 ring-1 ring-sky-100">
+                <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">
+                  Təxmini məbləğ
+                </p>
+                <p className="mt-1 text-2xl font-bold text-sky-900">
+                  {formatCurrency(estimatedPrice)}
+                </p>
                 {!editOrder && unitPrice > 0 && (
-                  <span className="text-slate-500">
-                    {' '}
-                    (su {formatCurrency(calcOrderWaterTotal(unitPrice, bidonsCount))}
+                  <p className="mt-1 text-sm font-semibold text-sky-800/80">
+                    su {formatCurrency(calcOrderWaterTotal(unitPrice, bidonsCount))}
                     {createExtrasTotal > 0
                       ? ` + əlavə ${formatCurrency(createExtrasTotal)}`
                       : ''}
-                    )
-                  </span>
+                  </p>
                 )}
-              </p>
+              </div>
             )}
           </div>
         </form>
