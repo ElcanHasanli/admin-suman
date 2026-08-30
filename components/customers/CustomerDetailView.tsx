@@ -37,7 +37,6 @@ import {
   getOrderFullBidonsGiven,
   getCustomerEmptyBidonsDuring,
   getCustomerActiveBidonsAfter,
-  formatOrderBidons,
   getOrderCourierName,
   getOrderPaidLabel,
   getOrderStatusLabel,
@@ -52,6 +51,7 @@ import { TableScroll } from '@/components/ui/TableScroll';
 import { Badge, orderStatusVariant } from '@/components/ui/Badge';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { CustomerFormModal } from '@/components/customers/CustomerFormModal';
+import { OrderBidonCounts } from '@/components/orders/OrderBidonCounts';
 import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
 import {
   MobileCard,
@@ -329,9 +329,13 @@ function RecentOrdersTable({
                   >
                     {formatDateTime(o.created_at)}
                   </MobileCardTitle>
+                  <OrderBidonCounts order={o} className="mb-3" />
                   <MobileCardGrid>
-                    <MobileCardField label="Bidon" value={formatOrderBidons(o)} />
-                    <MobileCardField label="Məbləğ" value={formatCurrency(parseMoney(o.price))} />
+                    <MobileCardField
+                      label="Məbləğ"
+                      value={formatCurrency(parseMoney(o.price))}
+                      valueClassName="text-2xl font-bold tabular-nums text-slate-900"
+                    />
                     <MobileCardField label="Ödəniş" value={getPaymentTypeLabel(o.payment_type)} />
                     <MobileCardField
                       label="Status"

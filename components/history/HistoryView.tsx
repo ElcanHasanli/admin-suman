@@ -43,7 +43,6 @@ import {
   resolveExportFilenameDates,
   getExpenseCategoryLabel,
   getCourierName,
-  getOrderBidonCount,
   getOrderCompletedTimeDisplay,
   getOrderCourierName,
   getOrderCustomerName,
@@ -64,6 +63,7 @@ import {
   formatOrderCollectionSummary,
 } from '@/lib/utils';
 import { OrderCollectionSummary } from '@/components/orders/OrderPaymentDetails';
+import { OrderBidonCounts } from '@/components/orders/OrderBidonCounts';
 import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -860,7 +860,7 @@ function OrderPriceCell({ order }: { order: Order }) {
 
   return (
     <div>
-      <p className="font-medium">{formatCurrency(price)}</p>
+      <p className="text-lg font-bold tabular-nums text-slate-900">{formatCurrency(price)}</p>
       <OrderCollectionSummary order={order} />
       {paid > 0 && (
         <p className="mt-0.5 text-xs text-emerald-600">Sifarişə: {formatCurrency(paid)}</p>
@@ -876,7 +876,10 @@ function OrderCustomerCell({ order }: { order: Order }) {
   const debt = getOrderCustomerDebt(order);
   return (
     <div>
-      <p>{getOrderCustomerName(order)}</p>
+      <p className="font-medium">{getOrderCustomerName(order)}</p>
+      {order.address && (
+        <p className="mt-1 text-sm font-bold leading-snug text-slate-900">{order.address}</p>
+      )}
       {debt != null && debt > 0 && (
         <p className="mt-0.5 text-xs font-medium text-red-600">
           Müştəri borcu: {formatCurrency(debt)}
@@ -914,16 +917,22 @@ function HistoryTable({
               <MobileCardTitle subtitle={getOrderCourierName(order)}>
                 {getOrderCustomerName(order)}
               </MobileCardTitle>
+              {order.address && (
+                <p className="mb-3 text-base font-bold leading-snug text-slate-900 sm:text-lg">
+                  {order.address}
+                </p>
+              )}
               {getOrderCustomerDebt(order) != null && getOrderCustomerDebt(order)! > 0 && (
                 <p className="mb-2 text-xs font-medium text-red-600">
                   Müştəri borcu: {formatCurrency(getOrderCustomerDebt(order)!)}
                 </p>
               )}
+              <OrderBidonCounts order={order} className="mb-3" />
               <MobileCardGrid>
-                <MobileCardField label="Bidon" value={getOrderBidonCount(order)} />
                 <MobileCardField
                   label="Qiymət"
                   value={formatCurrency(getOrderPrice(order))}
+                  valueClassName="text-2xl font-bold tabular-nums text-slate-900"
                 />
                 <MobileCardField
                   label="Sifarişə ödənilib"
@@ -1008,7 +1017,9 @@ function HistoryTable({
                 <td className="hidden px-3 py-3 text-slate-600 md:table-cell sm:px-5 sm:py-3.5">
                   {getOrderCourierName(order)}
                 </td>
-                <td className="px-3 py-3 sm:px-5 sm:py-3.5">{getOrderBidonCount(order)}</td>
+                <td className="px-3 py-3 sm:px-5 sm:py-3.5">
+                  <OrderBidonCounts order={order} />
+                </td>
                 <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                   <OrderPriceCell order={order} />
                 </td>

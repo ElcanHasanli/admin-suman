@@ -233,7 +233,11 @@ export function CustomersView() {
                         value={formatCurrency(getCustomerPrice(c))}
                         valueClassName="text-base font-bold text-slate-900"
                       />
-                      <MobileCardField label="Bidon" value={getCustomerActiveBidons(c)} />
+                      <MobileCardField
+                        label="Bidon"
+                        value={getCustomerActiveBidons(c)}
+                        valueClassName="text-2xl font-bold tabular-nums text-slate-900"
+                      />
                       <MobileCardField
                         label="Depozit"
                         value={formatCurrency(getCustomerDeposit(c))}
@@ -249,7 +253,7 @@ export function CustomersView() {
                       />
                     </MobileCardGrid>
                     {c.address && (
-                      <p className="mt-3 line-clamp-3 text-sm font-bold leading-relaxed text-slate-800">
+                      <p className="mt-3 text-base font-bold leading-snug text-slate-900 sm:text-lg">
                         {c.address}
                       </p>
                     )}

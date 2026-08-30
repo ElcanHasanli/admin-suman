@@ -71,8 +71,8 @@ import {
   isOrderCompleted,
   normalizeDate,
   truncateAddress,
-  formatOrderBidons,
 } from '@/lib/utils';
+import { OrderBidonCounts } from '@/components/orders/OrderBidonCounts';
 import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -684,11 +684,12 @@ export function OrdersView({
                     >
                       {getOrderCustomerName(order)}
                     </MobileCardTitle>
+                    <OrderBidonCounts order={order} className="mb-3" />
                     <MobileCardGrid>
-                      <MobileCardField label="Bidon" value={formatOrderBidons(order)} />
                       <MobileCardField
                         label="Qiymət"
                         value={formatCurrency(order.price)}
+                        valueClassName="text-2xl font-bold tabular-nums text-slate-900"
                       />
                       <MobileCardField
                         label="İcra günü"
@@ -708,7 +709,9 @@ export function OrdersView({
                       )}
                     </MobileCardGrid>
                     {order.address && (
-                      <p className="mt-2 line-clamp-2 text-xs text-slate-500">{order.address}</p>
+                      <p className="mt-3 text-base font-bold leading-snug text-slate-900 sm:text-lg">
+                        {order.address}
+                      </p>
                     )}
                     <MobileCardActions>
                       {canMarkOrderDebtPaid(order) && (
@@ -787,7 +790,11 @@ export function OrdersView({
                     <td className="px-3 py-3 sm:px-5 sm:py-3.5">
                       <p className="font-medium text-slate-900">{getOrderCustomerName(order)}</p>
                       <p className="text-xs text-slate-500">{getOrderTypeLabel(order.order_type)}</p>
-                      <p className="text-xs text-slate-500">{order.address}</p>
+                      {order.address && (
+                        <p className="mt-1 text-sm font-bold leading-snug text-slate-900">
+                          {order.address}
+                        </p>
+                      )}
                       <p className="mt-0.5 text-xs text-slate-400 sm:hidden">
                         {getOrderCourierName(order)}
                       </p>
@@ -795,10 +802,12 @@ export function OrdersView({
                     <td className="hidden px-3 py-3 text-slate-600 sm:table-cell sm:px-5 sm:py-3.5">
                       {getOrderCourierName(order)}
                     </td>
-                    <td className="px-3 py-3 text-xs font-semibold leading-snug sm:px-5 sm:py-3.5">
-                      {formatOrderBidons(order)}
+                    <td className="px-3 py-3 sm:px-5 sm:py-3.5">
+                      <OrderBidonCounts order={order} />
                     </td>
-                    <td className="px-3 py-3 font-medium sm:px-5 sm:py-3.5">{formatCurrency(order.price)}</td>
+                    <td className="px-3 py-3 text-lg font-bold tabular-nums text-slate-900 sm:px-5 sm:py-3.5 sm:text-xl">
+                      {formatCurrency(order.price)}
+                    </td>
                     <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
                       <span className="flex flex-col gap-0.5 whitespace-nowrap">
                         <span className="flex items-center gap-1">

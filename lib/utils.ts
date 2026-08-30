@@ -397,6 +397,21 @@ export function getCustomerActiveBidonsAfter(order: Order): number | null {
   return nullableBidonCount(order.customer_active_bidons_after);
 }
 
+/** Sifariş / boş götürülən / müştəridə qalan */
+export function getOrderBidonBreakdown(order: Order): {
+  ordered: number;
+  emptyTaken: number | null;
+  remaining: number | null;
+} {
+  const remainingAfter = getCustomerActiveBidonsAfter(order);
+  const remainingDuring = getCustomerEmptyBidonsDuring(order);
+  return {
+    ordered: getOrderBidonCount(order),
+    emptyTaken: getOrderEmptyBidonsReturned(order),
+    remaining: remainingAfter ?? remainingDuring,
+  };
+}
+
 /** Sifariş sətirində bidon xülasəsi: `2 dolu · 1 boş götürüldü · müştəridə 3 boş` */
 export function formatOrderBidons(order: Order): string {
   const isPickup = (order.order_type || '').toLowerCase() === 'pickup';
