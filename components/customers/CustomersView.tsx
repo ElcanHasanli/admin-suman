@@ -24,7 +24,7 @@ import {
   getCustomerDebt,
   getCustomerDeposit,
   getCustomerName,
-  getCustomerPhone,
+  formatCustomerPhones,
   getCustomerPrice,
   truncateAddress,
 } from '@/lib/utils';
@@ -224,9 +224,14 @@ export function CustomersView() {
               <MobileCardList>
                 {customers.map((c) => (
                   <MobileCard key={c.id} onClick={() => openDetail(c.id)}>
-                    <MobileCardTitle subtitle={getCustomerPhone(c) || undefined}>
+                    <MobileCardTitle>
                       {getCustomerName(c)}
                     </MobileCardTitle>
+                    {formatCustomerPhones(c) && (
+                      <p className="-mt-2 mb-3 text-lg font-bold tabular-nums leading-snug text-slate-900 sm:text-xl">
+                        {formatCustomerPhones(c)}
+                      </p>
+                    )}
                     <MobileCardGrid>
                       <MobileCardField
                         label="Qiymət"
@@ -253,7 +258,7 @@ export function CustomersView() {
                       />
                     </MobileCardGrid>
                     {c.address && (
-                      <p className="mt-3 text-base font-bold leading-snug text-slate-900 sm:text-lg">
+                      <p className="mt-3 text-lg font-bold leading-snug text-slate-900 sm:text-xl">
                         {c.address}
                       </p>
                     )}
@@ -542,8 +547,8 @@ function CustomersTable({
                 <td className="px-3 py-3 font-medium text-slate-900 sm:px-5 sm:py-3.5">
                   {getCustomerName(c)}
                 </td>
-                <td className="px-3 py-3 text-slate-600 sm:px-5 sm:py-3.5">
-                  {getCustomerPhone(c) || '—'}
+                <td className="px-3 py-3 text-base font-bold tabular-nums text-slate-900 sm:px-5 sm:py-3.5">
+                  {formatCustomerPhones(c) || '—'}
                 </td>
                 <td className="max-w-[160px] px-3 py-3 sm:max-w-[220px] sm:px-5 sm:py-3.5">
                   <span className="line-clamp-2 text-slate-600" title={c.address}>
