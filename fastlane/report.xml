@@ -5,57 +5,57 @@
     
     
       
-      <testcase classname="fastlane.lanes" name="00: default_platform" time="0.000471">
+      <testcase classname="fastlane.lanes" name="00: default_platform" time="0.000478">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="01: pwd" time="0.006578">
+      <testcase classname="fastlane.lanes" name="01: npm run build:mobile" time="8.225288">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="02: npx cap sync ios" time="6.262012">
+      <testcase classname="fastlane.lanes" name="02: env -u BUNDLE_GEMFILE -u BUNDLE_BIN_PATH -u BUNDLE_ORIGINATING_GEM -u BUNDLER_VERSION -u BUNDLE_PATH -u RUBYOPT PATH=&quot;$(brew --prefix)/bin:$(brew --prefix ruby)/bin:$PATH&quot; npx cap sync ios" time="4.723079">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="03: app_store_connect_api_key" time="0.003998">
+      <testcase classname="fastlane.lanes" name="03: app_store_connect_api_key" time="0.004864">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="04: match" time="11.890115">
+      <testcase classname="fastlane.lanes" name="04: match" time="13.104732">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="05: increment_build_number" time="0.214302">
+      <testcase classname="fastlane.lanes" name="05: increment_build_number" time="0.224538">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="06: increment_version_number" time="0.248544">
+      <testcase classname="fastlane.lanes" name="06: increment_version_number" time="0.252012">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="07: update_project_team" time="0.009051">
+      <testcase classname="fastlane.lanes" name="07: update_project_team" time="0.009931">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="08: build_app" time="99.899471">
+      <testcase classname="fastlane.lanes" name="08: build_app" time="63.016835">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="09: upload_to_app_store" time="225.262597">
+      <testcase classname="fastlane.lanes" name="09: upload_to_app_store" time="283.053805">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="10: clean_build_artifacts" time="0.001488">
+      <testcase classname="fastlane.lanes" name="10: clean_build_artifacts" time="0.001999">
         
       </testcase>
     
