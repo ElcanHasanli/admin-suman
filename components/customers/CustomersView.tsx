@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Pencil, Trash2, Download, Search, ChevronRight, X } from 'lucide-react';
 import {
@@ -28,6 +28,7 @@ import {
   getCustomerPrice,
   truncateAddress,
 } from '@/lib/utils';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TableScroll } from '@/components/ui/TableScroll';
@@ -75,7 +76,6 @@ export function CustomersView() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<CustomerFiltersState>(EMPTY_FILTERS);
   const [debouncedFilters, setDebouncedFilters] =
     useState<CustomerFiltersState>(EMPTY_FILTERS);
   const [priceOptions, setPriceOptions] = useState<number[]>([]);
@@ -88,11 +88,7 @@ export function CustomersView() {
 
   const showToast = (message: string, type: ToastType = 'info') =>
     setToast({ message, type });
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedFilters(filters), 300);
-    return () => clearTimeout(timer);
-  }, [filters]);
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     setPage(1);
@@ -104,29 +100,27 @@ export function CustomersView() {
       .catch(() => setPriceOptions([]));
   }, []);
 
+  useEffect(() => {
+    void getCustomerDepositTotals()
+      .then(setDepositTotals)
+      .catch(() => {});
+  }, []);
+
   const filterParams = useMemo(
     () => filtersToParams(debouncedFilters),
     [debouncedFilters]
   );
 
-  const hasActiveFilters = Boolean(
-    filterParams.name || filterParams.address || filterParams.phone || filterParams.price
-  );
-
   const load = useCallback(async () => {
-    setLoading(true);
+    if (firstLoad.current) setLoading(true);
     try {
-      const [data, totals] = await Promise.all([
-        getCustomers({
-          page,
-          limit: CUSTOMERS_DEFAULT_PAGE_SIZE,
-          ...filterParams,
-        }),
-        getCustomerDepositTotals().catch(() => null),
-      ]);
+      const data = await getCustomers({
+        page,
+        limit: CUSTOMERS_DEFAULT_PAGE_SIZE,
+        ...filterParams,
+      });
       setCustomers(data.customers);
       setTotal(data.total);
-      if (totals) setDepositTotals(totals);
 
       const maxPage = Math.max(1, Math.ceil(data.total / CUSTOMERS_DEFAULT_PAGE_SIZE));
       if (page > maxPage && maxPage >= 1) {
@@ -135,6 +129,7 @@ export function CustomersView() {
     } catch {
       showToast('Müştərilər yüklənə bilmədi', 'error');
     } finally {
+      firstLoad.current = false;
       setLoading(false);
     }
   }, [page, filterParams]);
@@ -159,7 +154,7 @@ export function CustomersView() {
 
   const handleExport = async () => {
     try {
-      const blob = await exportCustomersExcel(filtersToParams(filters));
+      const blob = await exportCustomersExcel(filtersToParams(debouncedFilters));
       await downloadBlob(blob, `musteriler_${formatLocalDate()}.xlsx`);
       showToast(getExportSuccessMessage(), 'success');
     } catch (err) {
@@ -184,20 +179,15 @@ export function CustomersView() {
     }
   };
 
-  const clearFilters = () => {
-    setFilters(EMPTY_FILTERS);
-    setDebouncedFilters(EMPTY_FILTERS);
-    setPage(1);
-  };
+  const handleDebouncedFilters = useCallback((next: CustomerFiltersState) => {
+    setDebouncedFilters(next);
+  }, []);
 
   return (
     <div className="space-y-6">
       <Toolbar
-        filters={filters}
-        onFiltersChange={setFilters}
+        onDebouncedChange={handleDebouncedFilters}
         priceOptions={priceOptions}
-        hasActiveFilters={hasActiveFilters}
-        onClearFilters={clearFilters}
         onExport={handleExport}
         onCreate={openCreate}
       />
@@ -335,28 +325,33 @@ export function CustomersView() {
 }
 
 function Toolbar({
-  filters,
-  onFiltersChange,
+  onDebouncedChange,
   priceOptions,
-  hasActiveFilters,
-  onClearFilters,
   onExport,
   onCreate,
 }: {
-  filters: CustomerFiltersState;
-  onFiltersChange: (next: CustomerFiltersState) => void;
+  onDebouncedChange: (next: CustomerFiltersState) => void;
   priceOptions: number[];
-  hasActiveFilters: boolean;
-  onClearFilters: () => void;
   onExport: () => void;
   onCreate: () => void;
 }) {
+  const [filters, setFilters] = useState<CustomerFiltersState>(EMPTY_FILTERS);
+  const debounced = useDebouncedValue(filters, 300);
+
+  useEffect(() => {
+    onDebouncedChange(debounced);
+  }, [debounced, onDebouncedChange]);
+
   const setField = (key: keyof CustomerFiltersState, value: string) => {
-    onFiltersChange({ ...filters, [key]: value });
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  const hasActiveFilters = Boolean(
+    filters.name.trim() || filters.address.trim() || filters.phone.trim() || filters.price.trim()
+  );
+
   const inputClass =
-    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100';
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100';
 
   return (
     <div className="space-y-3">
@@ -367,6 +362,9 @@ function Toolbar({
             value={filters.name}
             onChange={(e) => setField('name', e.target.value)}
             placeholder="Ad / soyad"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             className={`${inputClass} pl-9`}
           />
         </div>
@@ -399,7 +397,15 @@ function Toolbar({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           {hasActiveFilters && (
-            <Button type="button" variant="secondary" onClick={onClearFilters} className="text-xs">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setFilters(EMPTY_FILTERS);
+                onDebouncedChange(EMPTY_FILTERS);
+              }}
+              className="text-xs"
+            >
               <X size={14} />
               Filterləri təmizlə
             </Button>

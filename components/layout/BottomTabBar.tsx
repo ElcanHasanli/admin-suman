@@ -11,7 +11,7 @@ export function BottomTabBar() {
   return (
     <nav
       data-bottom-nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur-md"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Əsas naviqasiya"
     >

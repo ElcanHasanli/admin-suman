@@ -36,7 +36,7 @@ export function MobileAppHeader({ onLogout }: { onLogout: () => void }) {
   return (
     <>
       <header
-        className="sticky top-0 z-30 -mx-4 mb-4 flex items-center gap-3 border-b border-slate-200/80 bg-slate-100/95 px-4 py-3.5 backdrop-blur-md sm:-mx-6 sm:px-6"
+        className="sticky top-0 z-30 -mx-4 mb-4 flex items-center gap-3 border-b border-slate-200 bg-slate-100 px-4 py-3.5 sm:-mx-6 sm:px-6"
         style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
       >
         <button

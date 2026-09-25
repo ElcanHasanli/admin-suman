@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CUSTOMERS_DEFAULT_PAGE_SIZE, getDebtors } from '@/lib/api';
 import type { Customer } from '@/lib/types';
 import {
@@ -12,6 +11,7 @@ import {
   getCustomerPhone,
 } from '@/lib/utils';
 import { CustomerPayDebtModal } from '@/components/customers/CustomerPayDebtModal';
+import { DebouncedSearchInput } from '@/components/ui/DebouncedSearchInput';
 import { Button } from '@/components/ui/Button';
 import { Card, StatCard } from '@/components/ui/Card';
 import { TableScroll } from '@/components/ui/TableScroll';
@@ -33,23 +33,18 @@ export function DebtorsView() {
   const [total, setTotal] = useState(0);
   const [totalDebt, setTotalDebt] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [payCustomer, setPayCustomer] = useState<Customer | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (firstLoad.current) setLoading(true);
     try {
       const data = await getDebtors({
         page,
@@ -65,6 +60,7 @@ export function DebtorsView() {
         type: 'error',
       });
     } finally {
+      firstLoad.current = false;
       setLoading(false);
     }
   }, [page, debouncedSearch]);
@@ -92,15 +88,11 @@ export function DebtorsView() {
         />
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Ad və ya telefon axtar..."
-          className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-        />
-      </div>
+      <DebouncedSearchInput
+        onDebouncedChange={(v) => setDebouncedSearch(v.trim())}
+        placeholder="Ad və ya telefon axtar..."
+        className="max-w-md"
+      />
 
       <Card className="overflow-hidden">
         <MobileOnly>

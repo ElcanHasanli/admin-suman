@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, UserX, ChevronRight } from 'lucide-react';
+import { UserX, ChevronRight } from 'lucide-react';
 import {
   getInactiveCustomers,
   INACTIVE_CUSTOMERS_DEFAULT_PAGE_SIZE,
@@ -18,6 +18,7 @@ import {
   truncateAddress,
 } from '@/lib/utils';
 import { Card, StatCard } from '@/components/ui/Card';
+import { DebouncedSearchInput } from '@/components/ui/DebouncedSearchInput';
 import { TableScroll } from '@/components/ui/TableScroll';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { MobileOnly, DesktopOnly } from '@/components/ui/ResponsiveViews';
@@ -41,22 +42,17 @@ export function InactiveCustomersView() {
   const [customers, setCustomers] = useState<InactiveCustomer[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (firstLoad.current) setLoading(true);
     try {
       const data = await getInactiveCustomers({
         page,
@@ -71,6 +67,7 @@ export function InactiveCustomersView() {
         type: 'error',
       });
     } finally {
+      firstLoad.current = false;
       setLoading(false);
     }
   }, [page, debouncedSearch]);
@@ -97,15 +94,11 @@ export function InactiveCustomersView() {
         />
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Ad, telefon və ya ünvan axtar..."
-          className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-        />
-      </div>
+      <DebouncedSearchInput
+        onDebouncedChange={(v) => setDebouncedSearch(v.trim())}
+        placeholder="Ad, telefon və ya ünvan axtar..."
+        className="max-w-md"
+      />
 
       <Card className="overflow-hidden">
         <MobileOnly>

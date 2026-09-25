@@ -6,7 +6,6 @@ import {
   Pencil,
   Trash2,
   CheckCircle,
-  Search,
   Calendar,
   XCircle,
 } from 'lucide-react';
@@ -22,7 +21,6 @@ import {
   getOrders,
   getCompletedOrders,
   markOrderDone,
-  searchCustomers,
   updateOrder,
 } from '@/lib/api';
 import type {
@@ -39,7 +37,6 @@ import type {
 } from '@/lib/types';
 import {
   formatCurrency,
-  formatCustomerPhones,
   formatBakuTime,
   formatDateTime,
   getCourierName,
@@ -70,9 +67,10 @@ import {
   isOrderPaid,
   isOrderCompleted,
   normalizeDate,
-  truncateAddress,
 } from '@/lib/utils';
 import { OrderBidonCounts } from '@/components/orders/OrderBidonCounts';
+import { CustomerSearchField } from '@/components/orders/CustomerSearchField';
+import { DebouncedSearchInput } from '@/components/ui/DebouncedSearchInput';
 import { OrderDebtPaymentModal } from '@/components/history/OrderDebtPaymentModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -158,6 +156,7 @@ export function OrdersView({
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const firstLoad = useRef(true);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
   const [courierFilter, setCourierFilter] = useState<CourierFilter>(initialCourier);
@@ -166,8 +165,6 @@ export function OrdersView({
   const [modalOpen, setModalOpen] = useState(false);
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [form, setForm] = useState(emptyOrderForm);
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [customerMatches, setCustomerMatches] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [previewLastNote, setPreviewLastNote] = useState<CustomerOrderPreviewNote | null>(
     null
@@ -179,7 +176,6 @@ export function OrdersView({
   const [extras, setExtras] = useState<ExtraFormRow[]>([]);
   const [isPrepaid, setIsPrepaid] = useState(false);
   const [prepaidAmount, setPrepaidAmount] = useState('');
-  const [showCustomerList, setShowCustomerList] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newNoteBody, setNewNoteBody] = useState('');
   const [orderNotes, setOrderNotes] = useState<OrderNote[]>([]);
@@ -192,7 +188,7 @@ export function OrdersView({
     setToast({ message, type });
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (firstLoad.current) setLoading(true);
     try {
       const couriersData = await getCouriers();
       let ordersData: Order[];
@@ -209,6 +205,7 @@ export function OrdersView({
     } catch {
       showToast('Məlumatlar yüklənə bilmədi', 'error');
     } finally {
+      firstLoad.current = false;
       setLoading(false);
     }
   }, [viewMode, dateFrom, dateTo, statusFilter, courierFilter]);
@@ -239,23 +236,6 @@ export function OrdersView({
     }
   }, [statusFilter, courierFilter]);
 
-  useEffect(() => {
-    const q = customerSearch.trim();
-    if (!q || q.length < 2) {
-      setCustomerMatches([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const results = await searchCustomers(q);
-        setCustomerMatches(results.slice(0, 8));
-      } catch {
-        setCustomerMatches([]);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [customerSearch]);
-
   const filteredOrders = useMemo(() => {
     const q = search.toLowerCase().trim();
     let list = [...orders];
@@ -278,8 +258,6 @@ export function OrdersView({
       bidons: String(getCustomerActiveBidons(customer) || 1),
     }));
     setDebtInput(String(getCustomerDebt(customer)));
-    setCustomerSearch(getCustomerName(customer));
-    setShowCustomerList(false);
   }, []);
 
   const loadCustomerPreview = useCallback(
@@ -322,7 +300,6 @@ export function OrdersView({
 
   const resetCreateForm = () => {
     setForm(emptyOrderForm);
-    setCustomerSearch('');
     setSelectedCustomer(null);
     setPreviewLastNote(null);
     setOrderType('delivery');
@@ -349,7 +326,6 @@ export function OrdersView({
       bidons: String(getOrderBidonCount(order)),
       address: order.address || '',
     });
-    setCustomerSearch(getOrderCustomerName(order));
     setOrderType(
       order.order_type === 'pickup' || order.order_type === 'delivery'
         ? order.order_type
@@ -569,7 +545,11 @@ export function OrdersView({
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <OrderSearchBar search={search} onSearch={setSearch} />
+          <DebouncedSearchInput
+            onDebouncedChange={setSearch}
+            placeholder="Müştəri və ya kuryer axtar..."
+            className="flex-1 lg:max-w-md"
+          />
           <Button onClick={openCreate} className="w-full shrink-0 sm:w-auto">
             <Plus size={16} />
             Yeni sifariş
@@ -926,45 +906,17 @@ export function OrdersView({
             </p>
           )}
 
-          <div className="relative">
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">
-              Müştəri axtar
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input
-                value={customerSearch}
-                onChange={(e) => {
-                  setCustomerSearch(e.target.value);
-                  setShowCustomerList(true);
-                }}
-                onFocus={() => setShowCustomerList(true)}
-                placeholder="Ad, telefon və ya ünvan..."
-                className="w-full rounded-lg border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-              />
-            </div>
-            {showCustomerList && customerMatches.length > 0 && (
-              <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                {customerMatches.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      type="button"
-                      onClick={() => selectCustomer(c)}
-                      className="w-full px-4 py-2.5 text-left text-sm hover:bg-sky-50"
-                    >
-                      <span className="font-medium">{getCustomerName(c)}</span>
-                      <span className="ml-2 text-slate-500">{formatCustomerPhones(c)}</span>
-                      {c.address?.trim() && (
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          {truncateAddress(c.address, 64)}
-                        </p>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <CustomerSearchField
+            selectedLabel={
+              selectedCustomer
+                ? getCustomerName(selectedCustomer)
+                : editOrder
+                  ? getOrderCustomerName(editOrder)
+                  : ''
+            }
+            onSelect={selectCustomer}
+            disabled={editCompleted}
+          />
 
           {selectedCustomer && (
             <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
@@ -1337,26 +1289,6 @@ function filterOrdersByCourier(orders: Order[], courier: CourierFilter): Order[]
     return orders.filter((o) => o.courier_id == null);
   }
   return orders.filter((o) => o.courier_id === courier);
-}
-
-function OrderSearchBar({
-  search,
-  onSearch,
-}: {
-  search: string;
-  onSearch: (v: string) => void;
-}) {
-  return (
-    <div className="relative w-full min-w-0 flex-1 lg:max-w-md">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-      <input
-        value={search}
-        onChange={(e) => onSearch(e.target.value)}
-        placeholder="Müştəri və ya kuryer axtar..."
-        className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-      />
-    </div>
-  );
 }
 
 function CompletedOrderPayment({ order }: { order: Order }) {
